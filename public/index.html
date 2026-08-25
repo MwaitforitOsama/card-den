@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Taash Adda — Card Den</title>
+<meta name="description" content="Taash Adda — the card den. Thulla and Rung with the boys, private rooms with voice chat, from anywhere.">
+<meta property="og:title" content="Taash Adda — Card Den">
+<meta property="og:description" content="Thulla and Rung with the boys — join the room and play.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#14532d">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎴</text></svg>">
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+<main id="screen-home" class="screen">
+  <div class="panel">
+    <h1>🎴 Taash Adda</h1>
+    <p class="tagline">The card den — Thulla &amp; Rung with the boys, from anywhere</p>
+    <input id="name-input" type="text" placeholder="Your name" maxlength="16" autocomplete="off">
+    <div id="game-picker">
+      <button class="game-tab active" data-game="thulla">♠ Thulla</button>
+      <button class="game-tab" data-game="rung">🎺 Rung</button>
+    </div>
+    <button id="btn-create" class="primary">Create a room</button>
+    <div class="divider">or join one</div>
+    <div class="join-row">
+      <input id="code-input" type="text" placeholder="CODE" maxlength="4" autocomplete="off" autocapitalize="characters">
+      <button id="btn-join">Join</button>
+    </div>
+    <p id="home-error" class="error" hidden></p>
+  </div>
+</main>
+
+<main id="screen-table" class="screen" hidden>
+  <div id="game-area">
+  <header id="table-header">
+    <button id="btn-leave" title="Leave room">← Leave</button>
+    <div id="room-code" title="Tap to copy"></div>
+    <div id="room-game"></div>
+    <div id="you-name"></div>
+    <div id="conn-status"></div>
+    <button id="btn-chat">💬 Chat<span id="chat-badge" hidden></span></button>
+  </header>
+
+  <div id="players"></div>
+
+  <div id="table-center">
+    <div id="grace-banner" hidden></div>
+    <div id="rung-info" hidden>
+      <span id="rung-trump"></span>
+      <span id="rung-score"></span>
+    </div>
+    <div id="center-row">
+      <div id="waste" hidden>
+        <div id="waste-stack"></div>
+        <div id="waste-count"></div>
+      </div>
+      <div id="rung-pile" hidden>
+        <div id="rung-pile-sars"></div>
+        <div id="rung-pile-count"></div>
+      </div>
+      <div id="trick"></div>
+    </div>
+    <div id="spectate-note" hidden>👁 You’re watching — you’ll be dealt in when this game ends</div>
+    <div id="status-line"></div>
+    <div id="seat-note" hidden></div>
+    <div id="claim-prompt" hidden>
+      <span id="claim-prompt-text"></span>
+      <div class="take-prompt-buttons">
+        <button id="btn-claim-call" class="primary">🎺 I’ll pick the rung</button>
+      </div>
+    </div>
+    <div id="call-prompt" hidden>
+      <span id="call-prompt-text"></span>
+      <div id="call-suits">
+        <button data-suit="S">♠</button>
+        <button data-suit="H" class="red">♥</button>
+        <button data-suit="C">♣</button>
+        <button data-suit="D" class="red">♦</button>
+      </div>
+    </div>
+    <div id="take-prompt" hidden>
+      <span id="take-prompt-text"></span>
+      <div class="take-prompt-buttons">
+        <button id="btn-take-yes" class="primary">Hand them over</button>
+        <button id="btn-take-no">Decline</button>
+      </div>
+    </div>
+    <div id="concede-prompt" hidden>
+      <span id="concede-prompt-text"></span>
+      <div class="take-prompt-buttons">
+        <button id="btn-concede-yes" class="primary">Accept the win</button>
+        <button id="btn-concede-no">Keep playing</button>
+      </div>
+    </div>
+    <div id="center-actions">
+      <button id="btn-start" class="primary" hidden>Start game</button>
+      <button id="btn-switch-game" hidden></button>
+      <button id="btn-take" class="warn" hidden></button>
+      <button id="btn-concede" class="danger" hidden></button>
+      <button id="btn-undo" hidden></button>
+    </div>
+  </div>
+
+  <div id="hand"></div>
+  </div>
+
+  <aside id="chat-panel">
+    <div id="chat-header">
+      <span>💬 Room chat</span>
+      <button id="btn-chat-close" title="Close chat">✕</button>
+    </div>
+    <div id="chat-messages"></div>
+    <form id="chat-form" autocomplete="off">
+      <input id="chat-input" type="text" placeholder="Say something…" maxlength="200">
+      <button type="submit" class="primary">Send</button>
+    </form>
+  </aside>
+</main>
+
+<div id="overlay" hidden>
+  <div class="panel">
+    <button id="btn-overlay-close" title="Close and view the table">✕</button>
+    <div id="overlay-text"></div>
+    <div id="overlay-stats" hidden></div>
+    <button id="btn-again" class="primary" hidden>Play again</button>
+    <div id="overlay-wait" hidden></div>
+    <button id="btn-overlay-leave">Leave room</button>
+  </div>
+</div>
+
+<button id="btn-talk" hidden>🎙</button>
+<div id="voice-audio"></div>
+
+<div id="toasts"></div>
+
+<script type="module" src="/js/main.js"></script>
+</body>
+</html>
