@@ -28,7 +28,8 @@ function state(hands, opts = {}) {
     ledSuit: opts.ledSuit ?? null,
     leader: opts.leader ?? opts.turn ?? 0,
     turn: opts.turn ?? 0,
-    rules: opts.rules ?? { aceCannotPick: true },
+    rules: opts.rules ?? { aceCannotPick: true, secondAceIsTwo: true },
+    acePending: opts.acePending ? [...opts.acePending] : [false, false, false, false],
     pile: opts.pile ? opts.pile.map(h => [...h]) : [],
     barred: opts.barred ?? false,
     tricksWon: opts.tricksWon ? [...opts.tricksWon] : [0, 0],
@@ -283,7 +284,7 @@ test('crossing 7 fires seven_reached once; play continues for the margin', () =>
   assert.equal(g.phase, 'playing'); // the deal plays out
 });
 
-test('house rule: an Ace cannot cut the sar, but the next non-Ace defense can', () => {
+test('house rule: an Ace cannot win the sar, but the next non-Ace defense can', () => {
   const g = state([
     ['AH', 'KH', '2S'], ['2H', '3H', '3S'], ['4H', '5H', '4S'], ['6H', '7H', '5S'],
   ], { trump: 'C', trickNumber: 5, turn: 0, pile: [SAR, SAR, SAR, SAR] });
@@ -320,6 +321,122 @@ test('house rule off: the classic game lets an Ace pick up', () => {
   const won = playHand(g, [[0, 'AH'], [1, '2H'], [2, '4H'], [3, '6H']]);
   assert.equal(won.aceBlocked, false);
   assert.equal(won.picked, 5);
+});
+
+test('double Ace: the second back-to-back Ace fights as the 2 of its suit', () => {
+  const g = state([
+    ['AD', 'AS'], ['2D', '3S'], ['3D', '4S'], ['4D', '5S'],
+  ], { trump: 'S', turn: 0 });
+  // Sar 1: seat 0 heads with a full Ace of diamonds — the pair is armed.
+  const won1 = playHand(g, [[0, 'AD'], [1, '2D'], [2, '3D'], [3, '4D']]);
+  assert.equal(won1.seat, 0);
+  assert.equal(g.acePending[0], true);
+  // Sar 2: seat 0 leads the trump Ace — demoted to a 2♠, every spade beats it.
+  const ev = playCard(g, 0, 'AS');
+  assert.equal(ev[0].demoted, true);
+  assert.equal(g.trick[0].demoted, true);
+  assert.equal(g.acePending[0], false); // pair consumed
+  playCard(g, 1, '3S');
+  playCard(g, 2, '4S');
+  const won2 = playCard(g, 3, '5S').find(e => e.type === 'trick_won');
+  assert.equal(won2.seat, 3); // 5♠ tops the demoted Ace
+});
+
+test('a demoted trump Ace is still a trump — just the lowest one', () => {
+  const g = state([
+    ['AH'], ['AS'], ['3H'], ['4H'],
+  ], { trump: 'S', turn: 0, acePending: [false, true, false, false] });
+  playCard(g, 0, 'AH');
+  const ev = playCard(g, 1, 'AS'); // void in hearts; second Ace in a row
+  assert.equal(ev[0].demoted, true);
+  playCard(g, 2, '3H');
+  const won = playCard(g, 3, '4H').find(e => e.type === 'trick_won');
+  assert.equal(won.seat, 1); // only trump in the sar, even as a "2"
+});
+
+test('pairs only: A-A-A demotes just the middle Ace', () => {
+  const g = state([
+    ['AD', 'AH', 'AS'], ['2D', '3H', '2S'], ['3D', '4H', '3S'], ['4D', '5H', '4S'],
+  ], { trump: 'C', turn: 0 });
+  playHand(g, [[0, 'AD'], [1, '2D'], [2, '3D'], [3, '4D']]); // full Ace, arms the pair
+  const ev2 = playCard(g, 0, 'AH');
+  assert.equal(ev2[0].demoted, true); // second in a row — a 2
+  playCard(g, 1, '3H');
+  playCard(g, 2, '4H');
+  const won2 = playCard(g, 3, '5H').find(e => e.type === 'trick_won');
+  assert.equal(won2.seat, 3); // 5♥ beats the demoted Ace
+  // Sar 3: the pair was consumed — seat 0's third Ace is a full Ace again.
+  playCard(g, 3, '4S');
+  const ev3 = playCard(g, 0, 'AS');
+  assert.equal(ev3[0].demoted, false);
+  playCard(g, 1, '2S');
+  const won3 = playCard(g, 2, '3S').find(e => e.type === 'trick_won');
+  assert.equal(won3.seat, 0); // full A♠ heads
+  assert.equal(g.acePending[0], true); // and arms the next pair
+});
+
+test('a non-Ace between two Aces resets the pair', () => {
+  const g = state([
+    ['AD', 'KD', 'AH'], ['2D', '3D', '2H'], ['4D', '5D', '3H'], ['6D', '7D', '4H'],
+  ], { trump: 'C', turn: 0 });
+  playHand(g, [[0, 'AD'], [1, '2D'], [2, '4D'], [3, '6D']]);
+  playHand(g, [[0, 'KD'], [1, '3D'], [2, '5D'], [3, '7D']]); // non-Ace disarms
+  assert.equal(g.acePending[0], false);
+  const ev = playCard(g, 0, 'AH');
+  assert.equal(ev[0].demoted, false); // full Ace again
+});
+
+test('a demoted Ace is no longer an Ace — it CAN win the sar', () => {
+  const g = state([
+    ['AH', 'AD'], ['2H', '5H'], ['3H', '6H'], ['4H', '7H'],
+  ], { trump: 'C', trickNumber: 5, turn: 0, pile: [SAR, SAR, SAR, SAR] });
+  // Sar 5: defends with a full Ace — senior, but an Ace can't win it.
+  const won5 = playHand(g, [[0, 'AH'], [1, '2H'], [2, '3H'], [3, '4H']]);
+  assert.equal(won5.aceBlocked, true);
+  assert.equal(won5.picked, 0);
+  // Sar 6: defends with the second Ace — a "2" now, so it wins the pile.
+  const won6 = playHand(g, [[0, 'AD'], [1, '5H'], [2, '6H'], [3, '7H']]);
+  assert.equal(won6.seat, 0); // everyone else off-suit, no trumps
+  assert.equal(won6.aceBlocked, false);
+  assert.equal(won6.picked, 6);
+});
+
+test('double-Ace rule off: every Ace plays at full strength', () => {
+  const g = state([
+    ['AD', 'AS'], ['2D', '3S'], ['3D', '4S'], ['4D', '5S'],
+  ], { trump: 'C', turn: 0, rules: { aceCannotPick: true, secondAceIsTwo: false } });
+  playHand(g, [[0, 'AD'], [1, '2D'], [2, '3D'], [3, '4D']]);
+  const ev = playCard(g, 0, 'AS');
+  assert.equal(ev[0].demoted, false);
+  playCard(g, 1, '3S');
+  playCard(g, 2, '4S');
+  const won = playCard(g, 3, '5S').find(e => e.type === 'trick_won');
+  assert.equal(won.seat, 0); // the back-to-back A♠ still heads
+});
+
+test('undo restores the double-Ace state', () => {
+  const g = state([
+    ['AD', 'KD'], ['2D', '3D'], ['4D', '5D'], ['6D', '7D'],
+  ], { trump: 'C', turn: 0 });
+  playCard(g, 0, 'AD');
+  assert.equal(g.acePending[0], true);
+  undoPlay(g, 0);
+  assert.equal(g.acePending[0], false); // un-armed
+  playCard(g, 0, 'KD');
+  assert.equal(g.acePending[0], false);
+});
+
+test('the trap springs silently: no acePending in the view, no undo for a demoted Ace', () => {
+  // The demoted throw is final — it opens no undo window.
+  const g = state([
+    ['AS', '2H'], ['2S', '3H'], ['3S', '4H'], ['4S', '5H'],
+  ], { trump: 'C', turn: 0, acePending: [true, false, false, false] });
+  assert.equal(playCard(g, 0, 'AS')[0].demoted, true);
+  assert.equal(g.lastPlay, null);
+  assert.throws(() => undoPlay(g, 0), /Nothing to take back/);
+  // A normal play right after is undoable as usual.
+  playCard(g, 1, '2S');
+  assert.deepEqual(g.lastPlay, { seat: 1, card: '2S', prevAcePending: false });
 });
 
 test('sar 13: the header takes everything left, even undefended', () => {
@@ -373,12 +490,18 @@ test('full random games: 13 sars, pickups only where legal, totals sum to 13', (
     let pickedTotal = 0;
     let guard = 0;
     let wasBarred = g.barred;
+    const lastAce = [false, false, false, false];
     while (g.phase === 'playing') {
       if (++guard > 60) assert.fail('game did not terminate');
       const legal = legalMoves(g, g.turn);
       assert.ok(legal.length > 0, 'current player must always have a legal move');
       const before = { hand: g.trickNumber, leader: g.leader, barred: wasBarred };
       const events = playCard(g, g.turn, legal[Math.floor(Math.random() * legal.length)]);
+      const played = events.find(ev => ev.type === 'played');
+      const wasAce = played.card[0] === 'A';
+      assert.equal(!!played.demoted, wasAce && lastAce[played.seat],
+        'demotion exactly when the same player played a full Ace last sar');
+      lastAce[played.seat] = wasAce && !played.demoted;
       const won = events.find(ev => ev.type === 'trick_won');
       if (won) {
         if (won.aceBlocked) assert.equal(won.picked, 0, 'an Ace-blocked sar takes nothing');

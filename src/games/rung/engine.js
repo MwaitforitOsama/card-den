@@ -31,10 +31,20 @@
 // - All 13 sars are played out. Sar 13's header always takes everything
 //   left on the table (bar or no bar, defended or not), so team totals
 //   always sum to 13 — first to 7 wins, 13-0 is a whitewash.
-// - OPTIONAL (rules.aceCannotPick, ON by default): an Ace can't cut the
-//   sar — a leader defending with any Ace stays senior but takes nothing;
+// - OPTIONAL (rules.aceCannotPick, ON by default): an Ace can't WIN the
+//   sar (it can still cut, i.e. overtake and go senior) — a leader defending with any Ace stays senior but takes nothing;
 //   the pile stays, they keep the lead, the next sar is winnable as
 //   normal. Sar 13 is immune (its header takes all, Ace or not).
+// - OPTIONAL (rules.secondAceIsTwo, ON by default): two Aces together
+//   equal a 2 — if the card a player threw in the previous sar was an
+//   Ace (won or lost), an Ace from them in this sar counts as the 2 of
+//   its suit: lowest rank, same suit (so a demoted trump Ace is still a
+//   trump), and no longer an "Ace" for the aceCannotPick rule — it CAN
+//   win the sar. Pairs only: the demoted Ace consumes the pair, so a
+//   third consecutive Ace is a full Ace again; any non-Ace resets.
+//   The rule is a TRAP: players get no advance warning that their next
+//   Ace counts as a 2 (the view must not leak it), and the demoted throw
+//   is final — it opens no undo window.
 // - One deal per game; the dealer seat rotates between deals (the room
 //   handles that).
 
@@ -89,12 +99,16 @@ function assignCaller(state, seat) {
 export function createGame({ claimants = null, rng = Math.random, rules = {} } = {}) {
   const state = {
     // Optional-rule flags. aceCannotPick is the university house rule (an
-    // Ace can't cut the sar) — ON by default because that's how the group
-    // plays; pass { aceCannotPick: false } for the classic game. To make
-    // it selectable per room later, thread a lobby toggle through the
-    // adapter's start() into this parameter.
-    rules: { aceCannotPick: rules.aceCannotPick ?? true },
+    // Ace can't win the sar) — ON by default because that's how the group
+    // plays; pass { aceCannotPick: false } for the classic game. The
+    // room's host toggle (set_rule) threads through the adapter's start()
+    // into this parameter.
+    rules: {
+      aceCannotPick: rules.aceCannotPick ?? true,
+      secondAceIsTwo: rules.secondAceIsTwo ?? true,
+    },
     numPlayers: 4,
+    acePending: [false, false, false, false], // seat's last card was a full Ace
     caller: null, // decided by toss or claim before anything is dealt
     claimants: null, // [seatA, seatB] who may claim the call ('choosing')
     toss: null, // toss rounds for display: [[{seat, card}] …]
@@ -162,23 +176,32 @@ export function legalMoves(state, seat) {
   return follow.length ? follow : [...hand];
 }
 
-// Does card a beat card b (the current best), given trump and led suit?
-function beats(state, a, b) {
-  const aTrump = suitOf(a) === state.trump;
-  const bTrump = suitOf(b) === state.trump;
-  if (aTrump !== bTrump) return aTrump;
-  if (aTrump) return rankValue(a) > rankValue(b);
-  const aLed = suitOf(a) === state.ledSuit;
-  const bLed = suitOf(b) === state.ledSuit;
-  if (aLed !== bLed) return aLed;
-  return aLed && rankValue(a) > rankValue(b);
+// A demoted Ace (second of a back-to-back pair) fights as the 2 of its
+// suit: lowest rank, suit — and therefore trump status — unchanged.
+function effectiveRank(play) {
+  return play.demoted ? rankValue('2' + suitOf(play.card)) : rankValue(play.card);
 }
 
-// The heading play {seat, card} — the card matters for the Ace rule.
+// Does play a beat play b (the current best), given trump and led suit?
+// Equal ranks never take over, so against the real 2 of the same suit the
+// earlier-played card stays senior.
+function beats(state, a, b) {
+  const aTrump = suitOf(a.card) === state.trump;
+  const bTrump = suitOf(b.card) === state.trump;
+  if (aTrump !== bTrump) return aTrump;
+  if (aTrump) return effectiveRank(a) > effectiveRank(b);
+  const aLed = suitOf(a.card) === state.ledSuit;
+  const bLed = suitOf(b.card) === state.ledSuit;
+  if (aLed !== bLed) return aLed;
+  return aLed && effectiveRank(a) > effectiveRank(b);
+}
+
+// The heading play {seat, card, demoted?} — card and demotion both matter
+// for the Ace rules.
 function trickWinner(state) {
   let best = state.trick[0];
   for (const play of state.trick.slice(1)) {
-    if (beats(state, play.card, best.card)) best = play;
+    if (beats(state, play, best)) best = play;
   }
   return best;
 }
@@ -191,11 +214,18 @@ export function playCard(state, seat, card) {
   if (seat !== state.turn) throw new Error('Not your turn');
   if (!legalMoves(state, seat).includes(card)) throw new Error('You cannot play that card');
 
-  const events = [{ type: 'played', seat, card }];
+  // Two Aces together equal a 2: an Ace right after this player's
+  // previous (full) Ace is demoted; the pair is then consumed.
+  const isAce = card[0] === 'A';
+  const prevAcePending = state.acePending[seat];
+  const demoted = state.rules.secondAceIsTwo && isAce && prevAcePending;
+  state.acePending[seat] = isAce && !demoted;
+
+  const events = [{ type: 'played', seat, card, demoted }];
   const hand = state.hands[seat];
   hand.splice(hand.indexOf(card), 1);
   if (state.trick.length === 0) state.ledSuit = suitOf(card);
-  state.trick.push({ seat, card });
+  state.trick.push(demoted ? { seat, card, demoted } : { seat, card });
 
   // This throw locks any previous undoable play; the new play itself is
   // undoable only while it does NOT resolve the trick.
@@ -216,7 +246,7 @@ export function playCard(state, seat, card) {
     const defended = header.seat === state.leader;
     const couldPick = !state.barred && state.trickNumber >= 5 && defended;
     const aceBlocked = !isLast && couldPick
-      && state.rules.aceCannotPick && header.card[0] === 'A';
+      && state.rules.aceCannotPick && header.card[0] === 'A' && !header.demoted;
     let picked = 0;
     if (isLast || (couldPick && !aceBlocked)) {
       picked = state.pile.length;
@@ -262,7 +292,8 @@ export function playCard(state, seat, card) {
     }
   } else {
     state.turn = (seat + 1) % 4;
-    state.lastPlay = { seat, card };
+    // A demoted Ace is the trap springing — that throw is final, no undo.
+    state.lastPlay = demoted ? null : { seat, card, prevAcePending };
   }
   return events;
 }
@@ -276,6 +307,7 @@ export function undoPlay(state, seat) {
   if (!lp || lp.seat !== seat) throw new Error('Nothing to take back');
   state.trick.pop(); // lastPlay is always the newest card in the trick
   state.hands[seat].push(lp.card);
+  state.acePending[seat] = lp.prevAcePending; // un-consume/un-arm the Ace pair
   if (state.trick.length === 0) state.ledSuit = null;
   state.turn = seat;
   state.lastPlay = null;

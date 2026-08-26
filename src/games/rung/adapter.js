@@ -25,11 +25,19 @@ export const rung = {
   title: 'Rung',
   minPlayers: 4,
 
+  // Optional rules the host may toggle between games (see the room's
+  // set_rule handler); values are stored on room.rules.rung and threaded
+  // into createGame below. Keys must match the engine's rules object.
+  settings: {
+    aceCannotPick: { default: true },
+    secondAceIsTwo: { default: true },
+  },
+
   // Start a fresh game. Nothing is dealt until the caller is known: the
   // previous winners pick among themselves ('choosing'), or the opening
   // toss decides on the spot.
   start(room) {
-    room.game = createGame({ claimants: claimantsFor(room) });
+    room.game = createGame({ claimants: claimantsFor(room), rules: room.rules?.rung ?? {} });
     const g = room.game;
     const events = [{ type: 'started', caller: g.caller, claimants: g.claimants, viaToss: !!g.toss }];
     if (g.toss) events.push({ type: 'toss', rounds: g.toss, winner: g.caller, claimants: g.claimants });
@@ -88,6 +96,10 @@ export const rung = {
       pile: game.pile, // face-up by rule: every card in it was played openly
       barred: game.barred,
       aceRule: game.rules?.aceCannotPick ?? false,
+      secondAceRule: game.rules?.secondAceIsTwo ?? false,
+      // Deliberately NOT exposed: acePending. The double-Ace rule is a
+      // trap — a player must remember their own last card, so the view
+      // gives no hint that their next Ace would count as a 2.
       tricksWon: [...game.tricksWon],
       decided: game.decided,
       winnerTeam: game.winnerTeam,

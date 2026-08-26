@@ -21,6 +21,7 @@ export function createGameView({ send }) {
   let pendingSweep = null; // completed sarr shown face-up, awaiting the next move
   let overlayDismissed = false; // player closed the game-over overlay
   let swapPick = null; // first seat the host tapped for a swap
+  let dissolveArmedUntil = 0; // two-tap confirm for the dissolve button
   let graceTimer = null;
   let graceEndsAt = null;
 
@@ -163,7 +164,8 @@ export function createGameView({ send }) {
     // Center: trick, then whatever the game view wants around it. Every
     // game-owned element hides first; the view re-shows its own.
     for (const id of ['#waste', '#btn-take', '#btn-concede', '#take-prompt',
-      '#concede-prompt', '#rung-info', '#call-prompt', '#claim-prompt', '#rung-pile']) {
+      '#concede-prompt', '#rung-info', '#call-prompt', '#claim-prompt', '#rung-pile',
+      '#rule-ace', '#rule-two-aces']) {
       $(id).hidden = true;
     }
     if (g && state.phase !== 'lobby') renderTrickCards(state, g.trick);
@@ -204,6 +206,30 @@ export function createGameView({ send }) {
     startBtn.hidden = !(iAmHost && (state.phase === 'lobby' || state.phase === 'over'));
     startBtn.disabled = state.players.filter(p => p.connected).length < (view.minPlayers ?? 3);
     startBtn.textContent = state.phase === 'over' ? 'Play again' : 'Start game';
+
+    // Dissolve (host, mid-game): aborts the game with nothing recorded.
+    // Two taps required — the first arms the button for a few seconds.
+    const dissolveBtn = $('#btn-dissolve');
+    if (iAmHost && state.phase === 'playing') {
+      dissolveBtn.hidden = false;
+      dissolveBtn.textContent = Date.now() < dissolveArmedUntil
+        ? '⚠️ Really dissolve?' : '🛑 Dissolve game';
+      dissolveBtn.onclick = () => {
+        if (Date.now() < dissolveArmedUntil) {
+          dissolveArmedUntil = 0;
+          send({ type: 'dissolve' });
+          return;
+        }
+        dissolveArmedUntil = Date.now() + 4000;
+        dissolveBtn.textContent = '⚠️ Really dissolve?';
+        setTimeout(() => {
+          if (Date.now() >= dissolveArmedUntil) dissolveBtn.textContent = '🛑 Dissolve game';
+        }, 4100);
+      };
+    } else {
+      dissolveBtn.hidden = true;
+      dissolveArmedUntil = 0;
+    }
 
     // Game switcher (host, between games): one tap flips to the other game.
     const switchBtn = $('#btn-switch-game');
@@ -308,6 +334,7 @@ export function createGameView({ send }) {
     lastState = null;
     pendingSweep = null;
     swapPick = null;
+    dissolveArmedUntil = 0;
     overlayDismissed = false;
     Object.values(VIEWS).forEach(v => v.reset());
     stopGrace();

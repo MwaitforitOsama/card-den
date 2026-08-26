@@ -65,7 +65,9 @@ const socket = createSocket({
   }),
   onMessage: msg => {
     if (msg.type === 'joined') {
-      session = { code: msg.code, token: msg.token };
+      // The name is remembered so a manual Join after a browser restart
+      // can prove this is the same person and reclaim the seat.
+      session = { code: msg.code, token: msg.token, name: store.loadName() };
       store.saveSession(session);
       setInviteUrl(msg.code);
       $('#conn-status').textContent = '';
@@ -125,10 +127,16 @@ $('#btn-join').onclick = () => {
   if (!myName()) return showHome('Enter your name first');
   const code = $('#code-input').value.trim().toUpperCase();
   if (!/^[A-Z]{4}$/.test(code)) return showHome('Room codes are 4 letters');
-  // Only reuse a token this tab itself earned for this room; otherwise join
-  // as a fresh player (lets several tabs in one browser be separate players).
+  // Reuse a token this tab itself earned for this room; failing that, fall
+  // back to the browser-wide backup — but only when the typed name matches
+  // the one that session was created with. So a restarted browser reclaims
+  // its seat, while extra tabs joining under other names stay separate
+  // players (multi-tab testing keeps working).
   const own = store.tabSession();
-  session = own && own.code === code ? own : null;
+  const backup = store.backupSession();
+  session = own && own.code === code ? own
+    : backup && backup.code === code && backup.name === store.loadName() ? backup
+    : null;
   socket.connect(code);
 };
 

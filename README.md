@@ -92,12 +92,21 @@ npm test           # engine unit tests, both games (node --test)
   whatever is left on the table — so team totals sum to 13. First team
   past 7 wins (announced the moment it's decided, margin still plays out);
   13–0 is a **whitewash** 🧹.
-- **Ace can't cut** (university house rule, on by default): defending the
+- **Ace can't win the sar** (university house rule, on by default): defending the
   lead with any Ace keeps you senior but picks up nothing — the pile
   stays, your lead stays, and the next sar is winnable as normal. The 13th
-  sar is immune. The engine takes this as a flag (`aceCannotPick` in
-  `src/games/rung/engine.js`) so a lobby toggle can switch it off later
-  for the classic game.
+  sar is immune. A 🂡 toggle in the lobby (and on the game-over screen)
+  shows the rule to everyone; the host can flip it between games for
+  guests who play classic rung, and the setting sticks for the room.
+- **Two Aces together equal a 2** (university house rule, on by default,
+  own 🂡🂡 toggle): if the card you threw in the previous sar was an Ace —
+  won or lost — an Ace from you in this sar fights as the 2 of its suit
+  (a demoted trump Ace is still a trump, just the lowest one). It's no
+  longer an "Ace", so it CAN win the sar. Pairs only: the demotion
+  consumes the pair, a third consecutive Ace is a full Ace again, and any
+  non-Ace resets. It's a **trap**: there is no advance warning — the
+  demotion is revealed only as the card lands ("counts as 2"), and that
+  throw is final (no undo). Remember your own last card.
 - One deal per game; Play Again re-deals with the dealer seat rotating, so
   the rung call moves around the table.
 
@@ -112,6 +121,12 @@ counted separately. Stats survive reconnects but are wiped when a player
 leaves the room; games aborted by a disconnect don't count.
 
 ## Disconnects
+
+The **host can dissolve** a running game (two-tap 🛑 button): it aborts
+with nothing recorded — no scoreboard change — and everyone returns to the
+lobby with seats kept, ready to restart or switch games. Rejoining after a
+browser restart reclaims your seat as long as you join from the same
+browser with the same name.
 
 If a player drops mid-game, everyone sees a 15-second countdown. If they
 reconnect in time the game simply continues; if not, they are removed and a

@@ -231,10 +231,13 @@ input:focus { border-color: var(--gold); }
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  /* `safe` + overflow: on short screens the column scrolls instead of
+     spilling under the hand strip (which would swallow taps). */
+  justify-content: safe center;
   gap: 14px;
   padding: 8px;
   min-height: 0;
+  overflow-y: auto;
 }
 
 #center-row { display: flex; align-items: center; justify-content: center; gap: 30px; }
@@ -369,6 +372,9 @@ input:focus { border-color: var(--gold); }
   min-height: calc(var(--card-h) + 48px);
   -webkit-overflow-scrolling: touch;
 }
+/* No cards (lobby, safely bahar) — don't reserve a dead strip that eats
+   table space and sits over the buttons above it. */
+#hand:empty { min-height: 0; padding: 0; }
 #hand .card { margin-left: -22px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55); }
 #hand .card:first-child { margin-left: 0; }
 /* Late game, every card matters: a small hand gets noticeably bigger cards. */
@@ -638,3 +644,23 @@ input:focus { border-color: var(--gold); }
   text-overflow: ellipsis;
   max-width: 32vw;
 }
+
+/* House-rule toggle (between games; host-only to flip) */
+.rule-toggle {
+  font-size: 0.8rem;
+  padding: 5px 12px;
+  border: 1px solid var(--gold);
+  background: rgba(234, 179, 8, 0.12);
+  color: var(--gold);
+  font-weight: 600;
+}
+.rule-toggle.off {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(0, 0, 0, 0.25);
+  color: rgba(255, 255, 255, 0.75);
+}
+.rule-toggle:disabled { opacity: 0.75; cursor: default; transform: none; }
+#rule-toggles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+/* Double-Ace rule: revealed only when the card lands on the table */
+.demote-tag { font-size: 0.65rem; color: #fbbf24; font-weight: 700; margin-top: 1px; }

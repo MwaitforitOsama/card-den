@@ -131,6 +131,8 @@ export class GameRoom {
       if (seat < 0) return this.sendError(ws, 'You are watching — you can play from the next game');
       if (msg.type === 'start') return await this.handleStart(ws, token);
       if (msg.type === 'set_game') return await this.handleSetGame(ws, token, msg);
+      if (msg.type === 'set_rule') return await this.handleSetRule(ws, token, msg);
+      if (msg.type === 'dissolve') return await this.handleDissolve(ws, token);
       if (msg.type === 'swap_seats') return await this.handleSwapSeats(ws, token, msg);
       if (msg.type === 'play') return await this.handleMove(ws, () => this.adapter.play(this.room.game, seat, msg.card));
       if (msg.type === 'undo') return await this.handleUndo(ws, seat);
@@ -352,6 +354,49 @@ export class GameRoom {
     this.broadcast([{ type: 'game_changed', game: id, title: GAMES[id].title }]);
   }
 
+  // Host flips an optional rule of the current game (e.g. Rung's "Ace
+  // can't win the sar"). Never mid-game — the rule set is locked in at the deal.
+  // Settings are stored per game id, so they survive switching games.
+  async handleSetRule(ws, token, msg) {
+    if (this.room.phase === 'playing') {
+      return this.sendError(ws, 'Rules can only change between games');
+    }
+    if (this.seatOf(token) !== this.hostSeat()) {
+      return this.sendError(ws, 'Only the host can change the rules');
+    }
+    const settings = this.adapter.settings ?? {};
+    const rule = String(msg.rule ?? '');
+    if (!(rule in settings)) return this.sendError(ws, 'Unknown rule');
+    this.room.rules ??= {};
+    this.room.rules[this.room.gameId] ??= {};
+    this.room.rules[this.room.gameId][rule] = !!msg.value;
+    await this.save();
+    this.broadcast([{ type: 'rule_changed', rule, value: !!msg.value }]);
+  }
+
+  // Host aborts a stuck or unwanted game. Nothing is recorded — no
+  // scoreboard change, no result to base the next rung call on, as if the
+  // deal never happened — and everyone returns to the lobby, seats kept.
+  async handleDissolve(ws, token) {
+    if (this.room.phase !== 'playing' || !this.room.game) {
+      return this.sendError(ws, 'No game to dissolve');
+    }
+    if (this.seatOf(token) !== this.hostSeat()) {
+      return this.sendError(ws, 'Only the host can dissolve the game');
+    }
+    await this.clearGrace();
+    this.room.phase = 'lobby';
+    this.room.game = null;
+    this.room.pendingTake = null;
+    this.room.pendingConcede = null;
+    this.room.undoDeadline = null;
+    this.room.lastResult = null;
+    const events = [{ type: 'dissolved' }];
+    this.seatSpectatorsEvent(events); // watchers can take seats now
+    await this.save();
+    this.broadcast(events);
+  }
+
   // Host rearranges seats (lobby, or between games — which returns the
   // table to the lobby first, since the old deal's seats no longer match).
   async handleSwapSeats(ws, token, msg) {
@@ -510,6 +555,7 @@ export class GameRoom {
       code: room.code,
       gameId: room.gameId ?? DEFAULT_GAME,
       gameTitle: this.adapter.title,
+      gameRules: room.rules?.[room.gameId ?? DEFAULT_GAME] ?? {},
       phase: room.phase,
       youSeat: seat,
       events,

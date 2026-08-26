@@ -28,6 +28,8 @@ export function renderTrickCards(state, trick) {
     const wrap = el('div', 'trick-card');
     wrap.appendChild(cardEl(play.card, { mini: true }));
     wrap.appendChild(el('div', 'trick-label', playerName(state, play.seat).replace(' (you)', '')));
+    // Rung's double-Ace rule: this Ace fights as a 2 — say so on the table.
+    if (play.demoted) wrap.appendChild(el('div', 'demote-tag', 'counts as 2'));
     box.appendChild(wrap);
   }
 }
@@ -144,6 +146,9 @@ export function announceShared(state, ev) {
       return true;
     case 'back_to_lobby':
       toast('Not enough players left — back to the lobby');
+      return true;
+    case 'dissolved':
+      toast('🛑 The host dissolved the game — nothing counted, back to the lobby');
       return true;
   }
   return false;

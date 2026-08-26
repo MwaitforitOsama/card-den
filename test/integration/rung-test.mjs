@@ -85,6 +85,14 @@ await until(() => host().stateCount > swapCount
   && host().state.players[2].name === beforeSwap[1], 'seats swapped');
 console.log(`seat swap ok: ${beforeSwap[1]} <-> ${beforeSwap[2]}`);
 
+/* ---------- house-rule toggle (Ace can't win the sar) ---------- */
+
+await expectError(bySeat(1), { type: 'set_rule', rule: 'aceCannotPick', value: false }, 'non-host rule change');
+await expectError(host(), { type: 'set_rule', rule: 'nope', value: false }, 'unknown rule');
+send(host(), { type: 'set_rule', rule: 'aceCannotPick', value: false });
+await until(() => host().state.gameRules?.aceCannotPick === false, 'ace rule off');
+console.log('ace rule toggled OFF (classic game for the guest)');
+
 /* ---------- toss & calling phase ---------- */
 
 send(host(), { type: 'start' });
@@ -105,11 +113,14 @@ if (g0.phase === 'choosing') {
 }
 g0 = host().state.game;
 const callerSeat = g0.caller;
+if (g0.aceRule !== false) errors.push('aceCannotPick=false was not threaded into the game');
+if (g0.secondAceRule !== true) errors.push('secondAceIsTwo should default to ON');
 for (const c of clients) {
   if (c.state.game.hand.length !== 5) errors.push(`${c.name} has ${c.state.game.hand.length} cards during calling, expected 5`);
   const expectCall = c.state.youSeat === callerSeat;
   if (c.state.game.youCall !== expectCall) errors.push(`${c.name} youCall=${c.state.game.youCall}, expected ${expectCall}`);
   if (c.state.game.trump !== null) errors.push('trump leaked before the call');
+  if ('youAcePending' in c.state.game) errors.push('double-Ace trap state leaked to the client');
 }
 console.log(`calling phase ok: 5 cards each, caller = seat ${callerSeat} (via toss)`);
 
@@ -129,6 +140,7 @@ for (const c of clients) {
 }
 if (host().state.game.turn !== callerSeat) errors.push('caller does not lead the first sar');
 console.log(`rung called: ${suit} — everyone at 13 cards, caller leads`);
+await expectError(host(), { type: 'set_rule', rule: 'aceCannotPick', value: true }, 'rule change mid-game');
 
 /* ---------- play out the deal ---------- */
 
@@ -185,6 +197,11 @@ console.log('scoreboard ok: team win/loss recorded per player');
 
 /* ---------- rematch: the winning pair chooses the caller ---------- */
 
+// House rules flip between games and must reach the next deal.
+send(host(), { type: 'set_rule', rule: 'aceCannotPick', value: true });
+await until(() => host().state.gameRules?.aceCannotPick === true, 'ace rule back on');
+send(host(), { type: 'set_rule', rule: 'secondAceIsTwo', value: false });
+await until(() => host().state.gameRules?.secondAceIsTwo === false, 'double-Ace rule off');
 send(host(), { type: 'start' });
 await until(() => clients.every(c => c.state?.game?.phase === 'choosing'), 'rematch choosing phase');
 const g2 = host().state.game;
@@ -200,9 +217,22 @@ await expectError(loser, { type: 'claim_call' }, 'loser claiming the call');
 send(bySeat(g2.claimants[1]), { type: 'claim_call' });
 await until(() => clients.every(c => c.state.game.phase === 'calling'), 'rematch caller set');
 if (host().state.game.caller !== g2.claimants[1]) errors.push('claim did not set the caller');
+if (host().state.game.aceRule !== true) errors.push('aceCannotPick=true was not threaded into the rematch');
+if (host().state.game.secondAceRule !== false) errors.push('secondAceIsTwo=false was not threaded into the rematch');
 console.log(`rematch ok: winners (team ${over.winnerTeam}) chose seat ${g2.claimants[1]} to call`);
+
+/* ---------- dissolve: host aborts, nothing is counted ---------- */
+
+await expectError(loser, { type: 'dissolve' }, 'non-host dissolving');
+const gamesBefore = host().state.gamesPlayed;
+send(host(), { type: 'dissolve' });
+await until(() => clients.every(c => c.state.phase === 'lobby' && !c.state.game), 'dissolved to lobby');
+if (host().state.gamesPlayed !== gamesBefore) errors.push('a dissolved game was tallied');
+if (host().state.players.length !== 4) errors.push('seats were lost on dissolve');
+await expectError(host(), { type: 'dissolve' }, 'dissolving with no game');
+console.log('dissolve ok: back to lobby, nothing counted, seats kept');
 
 clients.forEach(c => { try { c.ws.close(); } catch {} });
 if (errors.length) { console.log('ERRORS:', errors); process.exit(1); }
-console.log('RUNG TEST PASSED: switching, seating, toss, claiming, full deal, stats');
+console.log('RUNG TEST PASSED: switching, seating, toss, claiming, full deal, stats, dissolve');
 process.exit(0);

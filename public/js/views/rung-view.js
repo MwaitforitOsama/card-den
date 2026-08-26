@@ -5,7 +5,7 @@
 import { $, el, escapeHtml } from '../dom.js';
 import { cardEl, SUIT_SYM } from '../cards.js';
 import { toast } from '../toast.js';
-import { playerName, renderTrickCards, flyToTarget, chipRect, splash } from './table-common.js';
+import { playerName, prettyCard, renderTrickCards, flyToTarget, chipRect, splash } from './table-common.js';
 
 export function createRungView({ send }) {
   // While a resolved sar is still displayed in the trick area (awaiting its
@@ -101,7 +101,7 @@ export function createRungView({ send }) {
     if (g.trickNumber === 13) tag = ` · last sar — its header takes all ${atStake}`;
     else if (g.barred) tag = ' · barred sar, no pickup';
     else if (g.trickNumber < 5) tag = ' · pile building';
-    else tag = ` · ${leadName} takes ${atStake} if unbeaten${g.aceRule ? ' (Ace can’t cut)' : ''}`;
+    else tag = ` · ${leadName} takes ${atStake} if unbeaten${g.aceRule ? ' (Ace can’t win it)' : ''}`;
     if (g.trick.length === 0) return `Sarr ${g.trickNumber} — ${turnName} leads${tag}`;
     return `Sarr ${g.trickNumber} — ${SUIT_SYM[g.ledSuit]} led · ${turnName} to play${tag}`;
   }
@@ -151,6 +151,14 @@ export function createRungView({ send }) {
         `<span class="score-team t1"><b>${g.tricksWon[1]}</b> ${escapeHtml(teamNames(state, 1))}</span>`;
     }
 
+    // House-rule toggles: visible to everyone between games so guests know
+    // what they're playing; only the host can flip them.
+    if (state.phase === 'lobby' || state.phase === 'over') {
+      const isHost = !!state.players.find(p => p.seat === state.youSeat)?.isHost;
+      renderRuleToggle(state, isHost, '#rule-ace', 'aceCannotPick', "🂡 Ace can't win the sar");
+      renderRuleToggle(state, isHost, '#rule-two-aces', 'secondAceIsTwo', '🂡🂡 2nd Ace in a row = 2');
+    }
+
     // The calling prompt, for the caller only.
     if (g && g.youCall) {
       $('#call-prompt').hidden = false;
@@ -170,6 +178,17 @@ export function createRungView({ send }) {
         && (g.phase === 'choosing' || g.phase === 'calling')) {
       renderTrickCards(state, g.toss[g.toss.length - 1]);
     }
+  }
+
+  function renderRuleToggle(state, isHost, id, rule, label) {
+    const on = state.gameRules?.[rule] ?? true;
+    const toggle = $(id);
+    toggle.hidden = false;
+    toggle.textContent = `${label}: ${on ? 'ON' : 'OFF'}`;
+    toggle.classList.toggle('off', !on);
+    toggle.disabled = !isHost;
+    toggle.title = isHost ? 'Tap to flip for the next game' : 'Only the host can change this';
+    toggle.onclick = () => send({ type: 'set_rule', rule, value: !on });
   }
 
   function overlayHTML(state) {
@@ -221,7 +240,7 @@ export function createRungView({ send }) {
         } else if (ev.picked > 0) {
           toast(`💰 ${name(ev.seat)} defends the lead — picks up ${ev.picked} sarrein! ${score}`, 'thulla');
         } else if (ev.aceBlocked) {
-          toast(`🂡 ${name(ev.seat)} stays senior, but an Ace can't cut the sar — pile stays at ${ev.pileSize}`);
+          toast(`🂡 ${name(ev.seat)} stays senior, but an Ace can't win the sar — pile stays at ${ev.pileSize}`);
         } else if (ev.barred) {
           toast(`${name(ev.seat)} heads the barred sar — no pickup, pile at ${ev.pileSize}`);
         } else if (ev.hand < 5) {
@@ -233,6 +252,20 @@ export function createRungView({ send }) {
         }
         return true;
       }
+      case 'played':
+        if (ev.demoted) toast(`⚡ Double Ace! ${name(ev.seat)}’s ${prettyCard(ev.card)} counts as a 2`);
+        return true;
+      case 'rule_changed':
+        if (ev.rule === 'aceCannotPick') {
+          toast(ev.value
+            ? '🂡 House rule ON — an Ace can’t win the sar'
+            : '🂡 Classic rung — Aces pick up like any other card');
+        } else if (ev.rule === 'secondAceIsTwo') {
+          toast(ev.value
+            ? '🂡🂡 House rule ON — a 2nd Ace in a row counts as a 2'
+            : '🂡🂡 Rule off — every Ace plays at full strength');
+        }
+        return true;
       case 'seven_reached':
         toast(`🏁 ${escapeHtml(teamNames(state, ev.team))} have 7 — game theirs, playing out the margin`);
         return true;
