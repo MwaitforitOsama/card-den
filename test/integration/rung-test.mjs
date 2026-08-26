@@ -223,7 +223,10 @@ console.log(`rematch ok: winners (team ${over.winnerTeam}) chose seat ${g2.claim
 
 /* ---------- dissolve: host aborts, nothing is counted ---------- */
 
-await expectError(loser, { type: 'dissolve' }, 'non-host dissolving');
+// Any player who is not the host — the "loser" above may BE the host
+// (whose dissolve would rightly succeed) whenever the host's team lost.
+const nonHost = clients.find(c => !c.state.players.find(p => p.seat === c.state.youSeat)?.isHost);
+await expectError(nonHost, { type: 'dissolve' }, 'non-host dissolving');
 const gamesBefore = host().state.gamesPlayed;
 send(host(), { type: 'dissolve' });
 await until(() => clients.every(c => c.state.phase === 'lobby' && !c.state.game), 'dissolved to lobby');

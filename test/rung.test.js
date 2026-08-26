@@ -4,6 +4,13 @@ import {
   createGame, callTrump, claimCall, playCard, undoPlay, legalMoves, teamOf,
 } from '../src/games/rung/engine.js';
 import { rankValue } from '../src/games/cards.js';
+import { pickTrump } from '../src/bots/rung-bot.js';
+
+test('bot trump pick: longest suit, ties broken by stronger cards', () => {
+  assert.equal(pickTrump(['2H', '3H', '4H', 'AS', 'KD']), 'H'); // 3 hearts
+  assert.equal(pickTrump(['2S', '3S', 'AH', 'KH', '4D']), 'H'); // 2v2, hearts stronger
+  assert.equal(pickTrump(['AC', '2H', '3D', '4S', '5S']), 'S'); // 2 spades beat singles
+});
 
 // A game with a known caller: skip the toss via the claimants path.
 function freshGame(caller = 0) {

@@ -664,3 +664,20 @@ input:focus { border-color: var(--gold); }
 
 /* Double-Ace rule: revealed only when the card lands on the table */
 .demote-tag { font-size: 0.65rem; color: #fbbf24; font-weight: 700; margin-top: 1px; }
+
+/* The bot's chip: host gets a corner ✕ to send it home */
+.player-chip.bot { border-style: dotted; border-color: rgba(255, 255, 255, 0.3); }
+.bot-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  line-height: 1;
+  background: #7f1d1d;
+  color: #fecaca;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}

@@ -143,7 +143,7 @@ export function createGameView({ send }) {
       }
       const sub = view.chipDecor(state, p, chip);
       chip.appendChild(el('div', 'chip-name',
-        `${p.isHost ? '★ ' : ''}${p.name}${p.seat === state.youSeat ? ' (you)' : ''}`));
+        `${p.isHost ? '★ ' : ''}${p.isBot ? '🤖 ' : ''}${p.name}${p.seat === state.youSeat ? ' (you)' : ''}`));
       chip.appendChild(el('div', 'chip-sub', sub));
       if (p.stats && p.stats.games > 0) {
         const wins = p.stats.wins > 0 ? ` · 🏆 ${p.stats.wins}` : '';
@@ -165,7 +165,7 @@ export function createGameView({ send }) {
     // game-owned element hides first; the view re-shows its own.
     for (const id of ['#waste', '#btn-take', '#btn-concede', '#take-prompt',
       '#concede-prompt', '#rung-info', '#call-prompt', '#claim-prompt', '#rung-pile',
-      '#rule-ace', '#rule-two-aces']) {
+      '#rule-ace', '#rule-two-aces', '#btn-add-bot']) {
       $(id).hidden = true;
     }
     if (g && state.phase !== 'lobby') renderTrickCards(state, g.trick);

@@ -8,6 +8,7 @@
 // the scoreboard — and delegates every rule decision to the adapter.
 
 import { GAMES, DEFAULT_GAME } from './games/index.js';
+import { BOTS } from './bots/index.js';
 
 const MAX_PLAYERS = 7; // room seat capacity (a game may use fewer)
 const GRACE_MS = 15_000; // reconnect window before a dropped player is cut
@@ -28,6 +29,12 @@ export class GameRoom {
 
   get adapter() {
     return GAMES[this.room?.gameId] ?? GAMES[DEFAULT_GAME];
+  }
+
+  // The current game's bot brain, if it has one. Bots live in src/bots/,
+  // entirely outside the game engines and adapters.
+  get bot() {
+    return BOTS[this.room?.gameId ?? DEFAULT_GAME] ?? null;
   }
 
   /* ---------- plumbing ---------- */
@@ -118,33 +125,62 @@ export class GameRoom {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
     try {
-      if (msg.type === 'join') return await this.handleJoin(ws, msg);
-      const token = this.tokenOf(ws);
-      const seat = token ? this.seatOf(token) : -1;
-      const spectator = token && seat < 0
-        ? (this.room?.spectators ?? []).find(s => s.token === token)
-        : null;
-      if (seat < 0 && !spectator) return this.sendError(ws, 'Join the room first');
-      if (msg.type === 'chat') return await this.handleChat(seat, spectator, msg);
-      if (msg.type === 'rtc') return this.handleRtc(token, msg);
-      if (msg.type === 'voice') return this.handleVoice(token, msg);
-      if (seat < 0) return this.sendError(ws, 'You are watching — you can play from the next game');
-      if (msg.type === 'start') return await this.handleStart(ws, token);
-      if (msg.type === 'set_game') return await this.handleSetGame(ws, token, msg);
-      if (msg.type === 'set_rule') return await this.handleSetRule(ws, token, msg);
-      if (msg.type === 'dissolve') return await this.handleDissolve(ws, token);
-      if (msg.type === 'swap_seats') return await this.handleSwapSeats(ws, token, msg);
-      if (msg.type === 'play') return await this.handleMove(ws, () => this.adapter.play(this.room.game, seat, msg.card));
-      if (msg.type === 'undo') return await this.handleUndo(ws, seat);
-      const action = this.adapter.actions?.[msg.type];
-      if (action) {
-        if (this.room.phase !== 'playing' || !this.room.game) {
-          return this.sendError(ws, 'No game in progress');
-        }
-        return await action(this, ws, seat, msg);
-      }
+      await this.route(ws, msg);
+      await this.runBots();
     } catch (err) {
       this.sendError(ws, err.message);
+    }
+  }
+
+  async route(ws, msg) {
+    if (msg.type === 'join') return await this.handleJoin(ws, msg);
+    const token = this.tokenOf(ws);
+    const seat = token ? this.seatOf(token) : -1;
+    const spectator = token && seat < 0
+      ? (this.room?.spectators ?? []).find(s => s.token === token)
+      : null;
+    if (seat < 0 && !spectator) return this.sendError(ws, 'Join the room first');
+    if (msg.type === 'chat') return await this.handleChat(seat, spectator, msg);
+    if (msg.type === 'rtc') return this.handleRtc(token, msg);
+    if (msg.type === 'voice') return this.handleVoice(token, msg);
+    if (seat < 0) return this.sendError(ws, 'You are watching — you can play from the next game');
+    if (msg.type === 'start') return await this.handleStart(ws, token);
+    if (msg.type === 'set_game') return await this.handleSetGame(ws, token, msg);
+    if (msg.type === 'set_rule') return await this.handleSetRule(ws, token, msg);
+    if (msg.type === 'dissolve') return await this.handleDissolve(ws, token);
+    if (msg.type === 'add_bot') return await this.handleAddBot(ws, token);
+    if (msg.type === 'remove_bot') return await this.handleRemoveBot(ws, token);
+    if (msg.type === 'swap_seats') return await this.handleSwapSeats(ws, token, msg);
+    if (msg.type === 'play') return await this.handleMove(ws, () => this.adapter.play(this.room.game, seat, msg.card));
+    if (msg.type === 'undo') return await this.handleUndo(ws, seat);
+    const action = this.adapter.actions?.[msg.type];
+    if (action) {
+      if (this.room.phase !== 'playing' || !this.room.game) {
+        return this.sendError(ws, 'No game in progress');
+      }
+      return await action(this, ws, seat, msg);
+    }
+  }
+
+  /* ---------- the bot (one seat-filler, moves instantly) ---------- */
+
+  // After anything happens, let the bot act until a human is up again.
+  // The bot has no socket: handleMove's error path goes nowhere (ws null),
+  // which is fine — its moves are always legal by construction.
+  async runBots() {
+    if (this.botBusy || !this.room || !this.bot) return;
+    const seat = this.room.players.findIndex(p => p.isBot);
+    if (seat < 0) return;
+    this.botBusy = true;
+    try {
+      let guard = 0;
+      while (this.room.phase === 'playing' && this.room.game
+          && this.bot.needsAct(this.room.game, seat)) {
+        if (++guard > 60) break; // never loop forever on a logic bug
+        await this.handleMove(null, () => this.bot.act(this.room.game, seat));
+      }
+    } finally {
+      this.botBusy = false;
     }
   }
 
@@ -230,9 +266,11 @@ export class GameRoom {
   }
 
   // Players the game is still waiting on (in the game, not done, and
-  // currently without a connection).
+  // currently without a connection). Bots have no socket but are always
+  // present — the game never waits on them.
   disconnectedActive(connected = this.connectedTokens()) {
-    return this.room.players.filter((p, seat) => !connected.has(p.token) && this.isActiveSeat(seat));
+    return this.room.players.filter((p, seat) =>
+      !p.isBot && !connected.has(p.token) && this.isActiveSeat(seat));
   }
 
   async startGrace() {
@@ -275,15 +313,18 @@ export class GameRoom {
     }
     await this.save();
     this.broadcast(events);
+    await this.runBots(); // the auto-restarted game may open on the bot
   }
 
   /* ---------- game lifecycle ---------- */
 
-  // Remove players with no live connection; returns the removed entries.
+  // Remove players with no live connection (bots stay); returns the
+  // removed entries.
   pruneDisconnected() {
     const connected = this.connectedTokens();
-    const dropped = this.room.players.filter(p => !connected.has(p.token));
-    this.room.players = this.room.players.filter(p => connected.has(p.token));
+    const keep = p => p.isBot || connected.has(p.token);
+    const dropped = this.room.players.filter(p => !keep(p));
+    this.room.players = this.room.players.filter(keep);
     return dropped;
   }
 
@@ -322,7 +363,7 @@ export class GameRoom {
     }
     this.pruneDisconnected();
     const events = this.seatSpectatorsEvent([]);
-    if (this.seatOf(token) !== 0) {
+    if (this.seatOf(token) !== this.hostSeat()) {
       return this.sendError(ws, 'Only the host can start the game');
     }
     if (this.room.players.length < this.adapter.minPlayers) {
@@ -350,8 +391,16 @@ export class GameRoom {
     this.room.game = null;
     this.room.pendingTake = null;
     this.room.pendingConcede = null;
+    const events = [{ type: 'game_changed', game: id, title: GAMES[id].title }];
+    // The bot is strictly a seat-filler for games that ship a bot brain —
+    // switching to one that doesn't sends it home.
+    const idx = this.room.players.findIndex(p => p.isBot);
+    if (idx >= 0 && !BOTS[id]) {
+      const [bot] = this.room.players.splice(idx, 1);
+      events.push({ type: 'bot_removed', name: bot.name });
+    }
     await this.save();
-    this.broadcast([{ type: 'game_changed', game: id, title: GAMES[id].title }]);
+    this.broadcast(events);
   }
 
   // Host flips an optional rule of the current game (e.g. Rung's "Ace
@@ -374,16 +423,10 @@ export class GameRoom {
     this.broadcast([{ type: 'rule_changed', rule, value: !!msg.value }]);
   }
 
-  // Host aborts a stuck or unwanted game. Nothing is recorded — no
-  // scoreboard change, no result to base the next rung call on, as if the
-  // deal never happened — and everyone returns to the lobby, seats kept.
-  async handleDissolve(ws, token) {
-    if (this.room.phase !== 'playing' || !this.room.game) {
-      return this.sendError(ws, 'No game to dissolve');
-    }
-    if (this.seatOf(token) !== this.hostSeat()) {
-      return this.sendError(ws, 'Only the host can dissolve the game');
-    }
+  // Abort the running game with nothing recorded — no scoreboard change,
+  // no result to base the next rung call on, as if the deal never
+  // happened — and return everyone to the lobby, seats kept.
+  async abortGame(events) {
     await this.clearGrace();
     this.room.phase = 'lobby';
     this.room.game = null;
@@ -391,8 +434,67 @@ export class GameRoom {
     this.room.pendingConcede = null;
     this.room.undoDeadline = null;
     this.room.lastResult = null;
-    const events = [{ type: 'dissolved' }];
+    events.push({ type: 'dissolved' });
     this.seatSpectatorsEvent(events); // watchers can take seats now
+    return events;
+  }
+
+  async handleDissolve(ws, token) {
+    if (this.room.phase !== 'playing' || !this.room.game) {
+      return this.sendError(ws, 'No game to dissolve');
+    }
+    if (this.seatOf(token) !== this.hostSeat()) {
+      return this.sendError(ws, 'Only the host can dissolve the game');
+    }
+    const events = await this.abortGame([]);
+    await this.save();
+    this.broadcast(events);
+  }
+
+  /* ---------- the bot's seat ---------- */
+
+  // Host seats the one bot (a games-with-a-bot room, not a bot room):
+  // only between games, only for games that ship a bot brain.
+  async handleAddBot(ws, token) {
+    if (!this.bot) {
+      return this.sendError(ws, `${this.adapter.title} has no bot player`);
+    }
+    if (this.room.phase === 'playing') {
+      return this.sendError(ws, 'Wait for the game to end to add the bot');
+    }
+    if (this.seatOf(token) !== this.hostSeat()) {
+      return this.sendError(ws, 'Only the host can add the bot');
+    }
+    if (this.room.players.some(p => p.isBot)) {
+      return this.sendError(ws, 'The bot is already seated');
+    }
+    if (this.room.players.length >= MAX_PLAYERS) {
+      return this.sendError(ws, `Room is full (${MAX_PLAYERS} players max)`);
+    }
+    this.room.players.push({ token: 'bot-' + crypto.randomUUID(), name: 'Botta', isBot: true });
+    await this.save();
+    this.broadcast([{ type: 'bot_added', name: 'Botta' }]);
+  }
+
+  // Host removes the bot whenever — pulling it mid-game aborts the deal
+  // (Rung needs its 4), with nothing counted.
+  async handleRemoveBot(ws, token) {
+    if (!this.room.players.some(p => p.isBot)) {
+      return this.sendError(ws, 'No bot in the room');
+    }
+    if (this.seatOf(token) !== this.hostSeat()) {
+      return this.sendError(ws, 'Only the host can remove the bot');
+    }
+    let events = [];
+    if (this.room.phase === 'playing') events = await this.abortGame(events);
+    const idx = this.room.players.findIndex(p => p.isBot);
+    const [bot] = this.room.players.splice(idx, 1);
+    if (this.room.phase === 'over') {
+      // Seats shifted under the finished game's display — back to the lobby.
+      this.room.phase = 'lobby';
+      this.room.game = null;
+    }
+    events.push({ type: 'bot_removed', name: bot.name });
     await this.save();
     this.broadcast(events);
   }
@@ -572,7 +674,8 @@ export class GameRoom {
         seat: i,
         name: p.name,
         peerId: p.peerId ?? null,
-        connected: connected.has(p.token),
+        connected: p.isBot || connected.has(p.token),
+        isBot: !!p.isBot,
         isHost: i === hostSeat,
         stats: { ...FRESH_STATS, ...(p.stats ?? {}) },
         ...(g ? this.adapter.seatView(g, i) : { cardCount: 0, safe: false }),

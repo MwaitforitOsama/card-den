@@ -49,13 +49,24 @@ export function createRungView({ send }) {
     const team = g ? p.team : (p.seat < 4 ? p.seat % 2 : null);
     if (team !== null && team !== undefined) chip.classList.add(`team-${team}`);
     if (g && p.sittingOut) chip.classList.add('benched');
+    if (p.isBot) {
+      chip.classList.add('bot');
+      // The host can send the bot home anytime — even mid-game (which
+      // dissolves the deal, since Rung needs its 4).
+      if (state.players.find(pl => pl.seat === state.youSeat)?.isHost) {
+        const x = el('button', 'bot-remove', '✕');
+        x.title = 'Remove the bot';
+        x.onclick = e => { e.stopPropagation(); send({ type: 'remove_bot' }); };
+        chip.appendChild(x);
+      }
+    }
     const lost = g && state.phase === 'over' && !p.sittingOut && p.team === losingTeam(state);
     if (lost) chip.classList.add('bhabhi');
-    if (state.phase === 'lobby') return p.connected ? 'ready' : 'away';
+    if (state.phase === 'lobby') return p.isBot ? 'bot — plays itself' : (p.connected ? 'ready' : 'away');
     if (p.sittingOut) return 'sitting out';
     if (state.phase === 'over') return lost ? 'game parr gayi' : '🏆 winner';
     if (g && g.phase === 'choosing') {
-      if (g.claimants?.includes(p.seat)) {
+      if (g.claimants?.includes(p.seat) && !p.isBot) {
         chip.classList.add('turn');
         chip.appendChild(el('div', 'chip-badge',
           p.seat === state.youSeat ? '🎺 CLAIM?' : '🎺 DECIDING'));
@@ -157,6 +168,12 @@ export function createRungView({ send }) {
       const isHost = !!state.players.find(p => p.seat === state.youSeat)?.isHost;
       renderRuleToggle(state, isHost, '#rule-ace', 'aceCannotPick', "🂡 Ace can't win the sar");
       renderRuleToggle(state, isHost, '#rule-two-aces', 'secondAceIsTwo', '🂡🂡 2nd Ace in a row = 2');
+      // Short a 4th? The host can seat the bot (one max).
+      if (isHost && !state.players.some(p => p.isBot)) {
+        const addBot = $('#btn-add-bot');
+        addBot.hidden = false;
+        addBot.onclick = () => send({ type: 'add_bot' });
+      }
     }
 
     // The calling prompt, for the caller only.
@@ -265,6 +282,12 @@ export function createRungView({ send }) {
             ? '🂡🂡 House rule ON — a 2nd Ace in a row counts as a 2'
             : '🂡🂡 Rule off — every Ace plays at full strength');
         }
+        return true;
+      case 'bot_added':
+        toast(`🤖 ${escapeHtml(ev.name)} takes the 4th seat — it plays by itself`);
+        return true;
+      case 'bot_removed':
+        toast(`🤖 ${escapeHtml(ev.name)} left the table`);
         return true;
       case 'seven_reached':
         toast(`🏁 ${escapeHtml(teamNames(state, ev.team))} have 7 — game theirs, playing out the margin`);

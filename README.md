@@ -110,6 +110,17 @@ npm test           # engine unit tests, both games (node --test)
 - One deal per game; Play Again re-deals with the dealer seat rotating, so
   the rung call moves around the table.
 
+## The bot (Rung seat-filler)
+
+Three friends, no fourth? The host can seat **Botta 🤖** from the Rung
+lobby (one bot max). It plays instantly and strictly by the rules — a
+random legal card on its turn, its longest suit if the toss makes it the
+caller — and never claims the rung call (its human partner does). The
+game never waits on it: no grace timer, no voice, no undo. The host can
+eject it anytime via the ✕ on its chip — mid-game ejection dissolves the
+deal (nothing counted) — and switching the room to Thulla sends it home
+automatically.
+
 ## Session scoreboard
 
 Every finished game is tallied: the room counts total games played, and each
@@ -155,6 +166,9 @@ mobile data can't hear each other, add a TURN server to `ICE_SERVERS` in
   - `cards.js` — shared deck/rank/sort primitives
   - `thulla/engine.js` + `thulla/adapter.js` — pure Thulla rules + room glue
   - `rung/engine.js` + `rung/adapter.js` — pure Rung rules + room glue
+- `src/bots/` — bot players, a separate entity from the game code: the
+  registry (`index.js`) plus one brain per game (`rung-bot.js`), consuming
+  each engine's public API only
 - `public/js/` — frontend ES modules, no build step:
   `main.js` (wiring/boot) · `socket.js` (connection lifecycle) ·
   `game-view.js` (shared table frame: chips, hand, timers, overlay) ·
