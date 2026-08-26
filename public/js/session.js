@@ -23,3 +23,15 @@ export function saveSession(session) {
     localStorage.removeItem(SESSION_KEY);
   }
 }
+
+// Leaving a room on purpose PARKS the session instead of destroying it:
+// boot never auto-resumes a parked room, but a manual rejoin of the same
+// room under the same name can still reclaim the seat (while the server
+// keeps it — the grace window).
+const PARKED_KEY = 'thulla-parked';
+
+export const parkedSession = () => parse(localStorage.getItem(PARKED_KEY));
+
+export function parkSession(session) {
+  if (session) localStorage.setItem(PARKED_KEY, JSON.stringify(session));
+}

@@ -1,6 +1,7 @@
 // Grace-timer test: (A) a player who disconnects mid-game triggers a grace
-// countdown, and after 15s the game restarts with the remaining players.
+// countdown, and after 30s the game restarts with the remaining players.
 // (B) a player who reconnects within the window cancels the restart.
+// (C) a tokenless rejoin under the same name reclaims the seat (rescue).
 const PORT = process.env.PORT ?? 8787;
 const BASE = `http://localhost:${PORT}`;
 const errors = [];
@@ -55,7 +56,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   victim.ws.close();
   await sleep(2000);
   if (!sawGrace) errors.push('A: no grace countdown broadcast after disconnect');
-  await sleep(16000);
+  await sleep(31000);
   if (!sawDropped) errors.push('A: players_dropped never fired');
   else if (!sawDropped.includes(victimName)) errors.push(`A: wrong player dropped: ${sawDropped}`);
   if (!sawRestarted) errors.push('A: game did not auto-restart');
@@ -85,12 +86,38 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const back = client(code, victim.name, token, () => {});
   await sleep(3000);
   if (host.state.grace) errors.push('B: grace not cleared after reconnect');
-  await sleep(13000); // past the original deadline
+  await sleep(27000); // past the original deadline
   if (restarted) errors.push('B: game restarted despite reconnect');
   if (host.state.players.length !== 3) errors.push(`B: player count changed to ${host.state.players.length}`);
   clients.forEach(c => { try { c.ws.close(); } catch {} });
   try { back.ws.close(); } catch {}
   console.log('scenario B done (reconnect in time → no restart)');
+}
+
+/* --- Scenario C: tokenless same-name rejoin reclaims the seat --- */
+{
+  let restarted = false;
+  const { code, clients, host } = await makeRoom(['Meer', 'Nadir', 'Omar', 'Pasha'], (c, m) => {
+    (m.events || []).forEach(ev => { if (ev.type === 'restarted' || ev.type === 'players_dropped') restarted = true; });
+  });
+  const victim = clients.find(c => c.state.youSeat !== 0);
+  const seat = victim.state.youSeat;
+  victim.ws.close();
+  await sleep(2000);
+  const back = client(code, victim.name, null, () => {}); // no token at all
+  await sleep(3000);
+  if (!back.state || back.state.youSeat !== seat) {
+    errors.push(`C: name rescue failed — youSeat ${back.state?.youSeat}, expected ${seat}`);
+  }
+  if (host.state.grace) errors.push('C: grace not cleared after name rescue');
+  // A stranger's name mid-game still becomes a spectator, never a player.
+  const stranger = client(code, 'Ghost', null, () => {});
+  await sleep(2000);
+  if (!stranger.state || stranger.state.youSeat !== -1) errors.push('C: unknown name did not become a spectator');
+  if (host.state.players.length !== 4) errors.push(`C: player count changed to ${host.state.players.length}`);
+  if (restarted) errors.push('C: game restarted despite the rescue');
+  [...clients, back, stranger].forEach(c => { try { c.ws.close(); } catch {} });
+  console.log('scenario C done (tokenless same-name rejoin reclaims the seat)');
 }
 
 if (errors.length) { console.log('ERRORS:', errors); process.exit(1); }

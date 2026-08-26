@@ -107,6 +107,16 @@ npm test           # engine unit tests, both games (node --test)
   non-Ace resets. It's a **trap**: there is no advance warning — the
   demotion is revealed only as the card lands ("counts as 2"), and that
   throw is final (no undo). Remember your own last card.
+- **Cannot win sar with Rung** (university house rule, on by default, own
+  🎺 toggle): a sar led with the rung suit can never be picked up (except
+  sar 13) — the pile stays, the leader keeps the lead, no bar. Leading
+  rung is therefore a **flush**: on an otherwise-winnable sar the opposite
+  team must beat the led rung card if they can. Team-smart — an earlier
+  opponent may hold back only while their partner still to act holds a
+  bigger rung card — and released the moment anyone overtakes the lead.
+  Follow-suit is never broken, and only cards that genuinely beat the led
+  card at effective rank qualify (a trap-armed Ace counts as a 2 and is
+  never compelled). Collecting the pile always takes a plain-suit lead.
 - One deal per game; Play Again re-deals with the dealer seat rotating, so
   the rung call moves around the table.
 
@@ -135,11 +145,12 @@ leaves the room; games aborted by a disconnect don't count.
 
 The **host can dissolve** a running game (two-tap 🛑 button): it aborts
 with nothing recorded — no scoreboard change — and everyone returns to the
-lobby with seats kept, ready to restart or switch games. Rejoining after a
-browser restart reclaims your seat as long as you join from the same
-browser with the same name.
+lobby with seats kept, ready to restart or switch games. **Rejoining
+under the same name reclaims your seat** while the server still holds it
+(the grace window): a browser restart, a deliberate Leave-and-return,
+even a different device — the name is the identity in a friends room.
 
-If a player drops mid-game, everyone sees a 15-second countdown. If they
+If a player drops mid-game, everyone sees a 30-second countdown. If they
 reconnect in time the game simply continues; if not, they are removed and a
 fresh game starts automatically among the remaining players (back to the
 lobby if too few remain). Thulla players who already got away can disconnect

@@ -115,6 +115,7 @@ g0 = host().state.game;
 const callerSeat = g0.caller;
 if (g0.aceRule !== false) errors.push('aceCannotPick=false was not threaded into the game');
 if (g0.secondAceRule !== true) errors.push('secondAceIsTwo should default to ON');
+if (g0.rungRule !== true) errors.push('rungCannotWin should default to ON');
 for (const c of clients) {
   if (c.state.game.hand.length !== 5) errors.push(`${c.name} has ${c.state.game.hand.length} cards during calling, expected 5`);
   const expectCall = c.state.youSeat === callerSeat;
@@ -202,6 +203,8 @@ send(host(), { type: 'set_rule', rule: 'aceCannotPick', value: true });
 await until(() => host().state.gameRules?.aceCannotPick === true, 'ace rule back on');
 send(host(), { type: 'set_rule', rule: 'secondAceIsTwo', value: false });
 await until(() => host().state.gameRules?.secondAceIsTwo === false, 'double-Ace rule off');
+send(host(), { type: 'set_rule', rule: 'rungCannotWin', value: false });
+await until(() => host().state.gameRules?.rungCannotWin === false, 'rung rule off');
 send(host(), { type: 'start' });
 await until(() => clients.every(c => c.state?.game?.phase === 'choosing'), 'rematch choosing phase');
 const g2 = host().state.game;
@@ -219,6 +222,7 @@ await until(() => clients.every(c => c.state.game.phase === 'calling'), 'rematch
 if (host().state.game.caller !== g2.claimants[1]) errors.push('claim did not set the caller');
 if (host().state.game.aceRule !== true) errors.push('aceCannotPick=true was not threaded into the rematch');
 if (host().state.game.secondAceRule !== false) errors.push('secondAceIsTwo=false was not threaded into the rematch');
+if (host().state.game.rungRule !== false) errors.push('rungCannotWin=false was not threaded into the rematch');
 console.log(`rematch ok: winners (team ${over.winnerTeam}) chose seat ${g2.claimants[1]} to call`);
 
 /* ---------- dissolve: host aborts, nothing is counted ---------- */

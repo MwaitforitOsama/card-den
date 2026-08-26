@@ -35,7 +35,7 @@ function state(hands, opts = {}) {
     ledSuit: opts.ledSuit ?? null,
     leader: opts.leader ?? opts.turn ?? 0,
     turn: opts.turn ?? 0,
-    rules: opts.rules ?? { aceCannotPick: true, secondAceIsTwo: true },
+    rules: opts.rules ?? { aceCannotPick: true, secondAceIsTwo: true, rungCannotWin: true },
     acePending: opts.acePending ? [...opts.acePending] : [false, false, false, false],
     pile: opts.pile ? opts.pile.map(h => [...h]) : [],
     barred: opts.barred ?? false,
@@ -446,6 +446,134 @@ test('the trap springs silently: no acePending in the view, no undo for a demote
   assert.deepEqual(g.lastPlay, { seat: 1, card: '2S', prevAcePending: false });
 });
 
+test('rung lead: the sar cannot be won — pile stays, lead kept, no bar', () => {
+  // The Jack example: nobody can beat the led rung card, small cards
+  // fall, and the sar still is not won. A plain lead next sar collects.
+  const g = state([
+    ['JS', 'KH'], ['3S', '4H'], ['4S', '5H'], ['5S', '6H'],
+  ], { trump: 'S', trickNumber: 5, turn: 0, pile: [SAR, SAR, SAR, SAR] });
+  const won5 = playHand(g, [[0, 'JS'], [1, '3S'], [2, '4S'], [3, '5S']]);
+  assert.equal(won5.seat, 0);
+  assert.equal(won5.defended, true);
+  assert.equal(won5.rungBlocked, true);
+  assert.equal(won5.picked, 0);
+  assert.equal(g.barred, false); // no pickup, so no bar
+  assert.equal(g.leader, 0); // the Jack-thrower leads on
+  const won6 = playHand(g, [[0, 'KH'], [1, '4H'], [2, '5H'], [3, '6H']]);
+  assert.equal(won6.rungBlocked, false); // plain lead
+  assert.equal(won6.picked, 6);
+});
+
+test('flush: the King forces the Ace when the partner cannot cover', () => {
+  const g = state([
+    ['KS', '2H'], ['AS', '2S', '3H'], ['6S', '7H'], ['4S', '5H'],
+  ], { trump: 'S', trickNumber: 5, turn: 0, pile: [SAR] });
+  playCard(g, 0, 'KS');
+  // Seat 1 holds the only bigger card and seat 3 cannot cover — forced.
+  assert.deepEqual(legalMoves(g, 1), ['AS']);
+  assert.throws(() => playCard(g, 1, '2S'), /cannot play/);
+  playCard(g, 1, 'AS');
+  // Leader's own team is never compelled, and once the King is beaten
+  // everyone still to act is released.
+  assert.deepEqual(legalMoves(g, 2), ['6S']);
+  playCard(g, 2, '6S');
+  assert.deepEqual(legalMoves(g, 3), ['4S']);
+});
+
+test('flush is team-smart: hold back only while the partner can cover', () => {
+  // Q led; first opponent has the K, later partner has the A.
+  const g = state([
+    ['QS', '2H'], ['KS', '2S'], ['6S', '7H'], ['AS', '3S'],
+  ], { trump: 'S', trickNumber: 5, turn: 0 });
+  playCard(g, 0, 'QS');
+  assert.deepEqual(legalMoves(g, 1).sort(), ['2S', 'KS']); // may pass — partner covers
+  playCard(g, 1, '2S');
+  playCard(g, 2, '6S');
+  assert.deepEqual(legalMoves(g, 3), ['AS']); // last chance — forced
+});
+
+test('flush releases the moment the led card is overtaken', () => {
+  // Ace-holder passes... or beats early; either way the last opponent is free.
+  const g = state([
+    ['QS', '2H'], ['AS', '2S'], ['6S', '7H'], ['KS', '3S'],
+  ], { trump: 'S', trickNumber: 5, turn: 0 });
+  playCard(g, 0, 'QS');
+  assert.deepEqual(legalMoves(g, 1).sort(), ['2S', 'AS']); // partner's K covers
+  playCard(g, 1, 'AS'); // chooses to beat it now
+  playCard(g, 2, '6S');
+  assert.deepEqual(legalMoves(g, 3).sort(), ['3S', 'KS']); // released
+});
+
+test('flush releases when the LEADER\'S OWN PARTNER cuts over the lead', () => {
+  const g = state([
+    ['QS', '2H'], ['2S', '3H'], ['AS', '5S'], ['KS', '3S'],
+  ], { trump: 'S', trickNumber: 5, turn: 0 });
+  playCard(g, 0, 'QS');
+  playCard(g, 1, '2S'); // nothing bigger — free
+  assert.deepEqual(legalMoves(g, 2).sort(), ['5S', 'AS']); // leader's team: never compelled
+  playCard(g, 2, 'AS'); // partner spoils their own leader
+  assert.deepEqual(legalMoves(g, 3).sort(), ['3S', 'KS']); // released
+});
+
+test('no flush on early sars, barred sars, sar 13, plain leads, or rule off', () => {
+  const hands = [['KS', '2H'], ['AS', '2S'], ['6S', '7H'], ['4S', '5H']];
+  // Sar 2: hoard the Ace freely.
+  let g = state(hands, { trump: 'S', trickNumber: 2, turn: 0 });
+  playCard(g, 0, 'KS');
+  assert.deepEqual(legalMoves(g, 1).sort(), ['2S', 'AS']);
+  // Barred sar: no compulsion.
+  g = state(hands, { trump: 'S', trickNumber: 6, turn: 0, barred: true });
+  playCard(g, 0, 'KS');
+  assert.deepEqual(legalMoves(g, 1).sort(), ['2S', 'AS']);
+  // Sar 13: no compulsion (the header takes all anyway).
+  g = state(hands, { trump: 'S', trickNumber: 13, turn: 0 });
+  playCard(g, 0, 'KS');
+  assert.deepEqual(legalMoves(g, 1).sort(), ['2S', 'AS']);
+  // Plain-suit lead: normal rules, sandbagging allowed.
+  g = state([['KH', '2S'], ['AH', '2H'], ['6S', '7H'], ['4S', '5H']],
+    { trump: 'S', trickNumber: 5, turn: 0 });
+  playCard(g, 0, 'KH');
+  assert.deepEqual(legalMoves(g, 1).sort(), ['2H', 'AH']);
+  // Rule off: rung leads can win, and nothing is compelled.
+  g = state(hands, {
+    trump: 'S', trickNumber: 5, turn: 0, pile: [SAR],
+    rules: { aceCannotPick: true, secondAceIsTwo: true, rungCannotWin: false },
+  });
+  playCard(g, 0, 'KS');
+  assert.deepEqual(legalMoves(g, 1).sort(), ['2S', 'AS']);
+  playCard(g, 1, '2S');
+  playCard(g, 2, '6S');
+  const won = playCard(g, 3, '4S').find(ev => ev.type === 'trick_won');
+  assert.equal(won.rungBlocked, false);
+  assert.equal(won.picked, 2); // rung-led defense collects normally
+});
+
+test('flush ignores a trap-armed Ace — it beats nothing', () => {
+  // Seat 1's Ace counts as a 2 (pair armed): not compelled at all…
+  let g = state([
+    ['KS', '2H'], ['AS', '2S'], ['6S', '7H'], ['4S', '5H'],
+  ], { trump: 'S', trickNumber: 5, turn: 0, acePending: [false, true, false, false] });
+  playCard(g, 0, 'KS');
+  assert.deepEqual(legalMoves(g, 1).sort(), ['2S', 'AS']);
+  // …but a real bigger card alongside it is still forced (Q led, K real).
+  g = state([
+    ['QS', '2H'], ['AS', 'KS', '2S'], ['6S', '7H'], ['4S', '5H'],
+  ], { trump: 'S', trickNumber: 5, turn: 0, acePending: [false, true, false, false] });
+  playCard(g, 0, 'QS');
+  assert.deepEqual(legalMoves(g, 1), ['KS']);
+});
+
+test('a rung-led defended Ace is blocked by both rules at once', () => {
+  const g = state([
+    ['AS', '2H'], ['3S', '4H'], ['5S', '6H'], ['7S', '8H'],
+  ], { trump: 'S', trickNumber: 5, turn: 0, pile: [SAR] });
+  const won = playHand(g, [[0, 'AS'], [1, '3S'], [2, '5S'], [3, '7S']]);
+  assert.equal(won.seat, 0);
+  assert.equal(won.picked, 0);
+  assert.equal(won.rungBlocked, true);
+  assert.equal(won.aceBlocked, true);
+});
+
 test('sar 13: the header takes everything left, even undefended', () => {
   const g = state([
     ['5H'], ['AH'], ['3H'], ['4H'],
@@ -502,7 +630,7 @@ test('full random games: 13 sars, pickups only where legal, totals sum to 13', (
       if (++guard > 60) assert.fail('game did not terminate');
       const legal = legalMoves(g, g.turn);
       assert.ok(legal.length > 0, 'current player must always have a legal move');
-      const before = { hand: g.trickNumber, leader: g.leader, barred: wasBarred };
+      const before = { hand: g.trickNumber, leader: g.leader, barred: wasBarred, led: g.ledSuit };
       const events = playCard(g, g.turn, legal[Math.floor(Math.random() * legal.length)]);
       const played = events.find(ev => ev.type === 'played');
       const wasAce = played.card[0] === 'A';
@@ -516,6 +644,7 @@ test('full random games: 13 sars, pickups only where legal, totals sum to 13', (
           assert.ok(before.hand >= 5, `no pickups before sar 5 (sar ${before.hand})`);
           assert.ok(!before.barred, 'no pickups on a barred sar');
           assert.equal(won.seat, before.leader, 'pickups require defending the lead');
+          assert.notEqual(before.led, g.trump, 'a rung-led sar can never be won (except 13)');
         }
         if (before.hand === 13) assert.ok(won.picked > 0, 'sar 13 header takes the leftovers');
         pickedTotal += won.picked;

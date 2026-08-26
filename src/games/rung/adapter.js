@@ -3,7 +3,8 @@
 // swap people in between games.
 
 import {
-  createGame, callTrump, claimCall, playCard, undoPlay, legalMoves, teamOf, sortHand,
+  createGame, callTrump, claimCall, playCard, undoPlay, legalMoves, mustBeat,
+  teamOf, sortHand,
 } from './engine.js';
 
 // The previous game's winning pair chooses who calls the rung — but only
@@ -31,6 +32,7 @@ export const rung = {
   settings: {
     aceCannotPick: { default: true },
     secondAceIsTwo: { default: true },
+    rungCannotWin: { default: true },
   },
 
   // Start a fresh game. Nothing is dealt until the caller is known: the
@@ -97,6 +99,11 @@ export const rung = {
       barred: game.barred,
       aceRule: game.rules?.aceCannotPick ?? false,
       secondAceRule: game.rules?.secondAceIsTwo ?? false,
+      rungRule: game.rules?.rungCannotWin ?? false,
+      // The rung-flush compulsion, when it's your move: the led card you
+      // are forced to beat (your legal list is already narrowed).
+      compelledBy: playing && game.phase === 'playing' && game.turn === seat
+        && mustBeat(game, seat) ? game.trick[0].card : null,
       // Deliberately NOT exposed: acePending. The double-Ace rule is a
       // trap — a player must remember their own last card, so the view
       // gives no hint that their next Ace would count as a 2.

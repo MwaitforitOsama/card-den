@@ -11,7 +11,7 @@ import { GAMES, DEFAULT_GAME } from './games/index.js';
 import { BOTS } from './bots/index.js';
 
 const MAX_PLAYERS = 7; // room seat capacity (a game may use fewer)
-const GRACE_MS = 15_000; // reconnect window before a dropped player is cut
+const GRACE_MS = 30_000; // reconnect window before a dropped player is cut
 const UNDO_MS = 10_000; // window to take a misplayed card back
 const CHAT_KEEP = 100;
 const CHAT_MAX_LEN = 200;
@@ -202,6 +202,16 @@ export class GameRoom {
       player = spectator; // keeps their token
       this.room.players.push(player);
       spectator = null;
+    }
+
+    // Same-name rescue: a joiner with no valid token takes over their own
+    // DISCONNECTED seat (storage lost, device switched, or they left and
+    // came straight back). Friends-room trust model — the name is the
+    // identity; a seat with a live connection is never taken this way.
+    if (!player && !spectator && name) {
+      const connected = this.connectedTokens();
+      player = this.room.players.find(p => !p.isBot && !connected.has(p.token)
+        && p.name.toLowerCase() === name.toLowerCase()) ?? null;
     }
 
     if (!player && !spectator) {

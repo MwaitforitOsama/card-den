@@ -26,6 +26,7 @@ function showHome(error, notice) {
 
 function leaveToHome(error) {
   socket.close();
+  store.parkSession(session); // keep the token for a change of heart
   session = null;
   store.saveSession(null);
   chat.reset();
@@ -123,20 +124,23 @@ $('#btn-create').onclick = async () => {
   }
 };
 
+// The token to rejoin `code` with: this tab's own session, else a stored
+// one (the backup, or the session parked by a deliberate Leave) whose room
+// AND name both match. A restarted browser or a returning leaver reclaims
+// their seat; extra tabs under other names stay separate players.
+function sessionFor(code) {
+  const own = store.tabSession();
+  if (own && own.code === code) return own;
+  const name = store.loadName();
+  const match = s => (s && s.code === code && s.name === name) ? s : null;
+  return match(store.backupSession()) ?? match(store.parkedSession());
+}
+
 $('#btn-join').onclick = () => {
   if (!myName()) return showHome('Enter your name first');
   const code = $('#code-input').value.trim().toUpperCase();
   if (!/^[A-Z]{4}$/.test(code)) return showHome('Room codes are 4 letters');
-  // Reuse a token this tab itself earned for this room; failing that, fall
-  // back to the browser-wide backup — but only when the typed name matches
-  // the one that session was created with. So a restarted browser reclaims
-  // its seat, while extra tabs joining under other names stay separate
-  // players (multi-tab testing keeps working).
-  const own = store.tabSession();
-  const backup = store.backupSession();
-  session = own && own.code === code ? own
-    : backup && backup.code === code && backup.name === store.loadName() ? backup
-    : null;
+  session = sessionFor(code);
   socket.connect(code);
 };
 
@@ -184,6 +188,7 @@ if (/^[A-Z]{4}$/.test(invite)) {
   // saved name we stop at the home screen once, code pre-filled, and their
   // name (plus Enter or Join) is all that's needed.
   $('#code-input').value = invite;
+  session = sessionFor(invite) ?? session;
   if (store.loadName()) socket.connect(invite);
   else {
     showHome(`You're invited to room ${invite} — enter your name to join`, true);

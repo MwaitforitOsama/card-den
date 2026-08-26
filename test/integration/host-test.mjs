@@ -43,7 +43,7 @@ else {
 
 // After the grace period the game restarts among the remaining three, and
 // the new seat 0 (a connected player) holds the host role.
-await sleep(16000);
+await sleep(31000);
 if (other.state.players.length !== 3) errors.push(`expected 3 players after restart, got ${other.state.players.length}`);
 if (other.state.phase !== 'playing') errors.push(`expected playing after restart, got ${other.state.phase}`);
 if (!other.state.players[0]?.isHost) errors.push('seat 0 is not host after restart');

@@ -105,6 +105,10 @@ export function createRungView({ send }) {
         : `${playerName(state, g.caller)} is choosing the rung…`;
     }
     if (g.phase !== 'playing') return '';
+    // The rung-flush compulsion trumps everything else on your turn.
+    if (g.compelledBy) {
+      return `⚔️ ${prettyCard(g.compelledBy)} led — a bigger rung card is forced!`;
+    }
     const turnName = playerName(state, g.turn);
     const leadName = playerName(state, g.leader).replace(' (you)', '');
     const atStake = g.pile.length + 1; // pile plus the sar being played
@@ -114,6 +118,10 @@ export function createRungView({ send }) {
     else if (g.trickNumber < 5) tag = ' · pile building';
     else tag = ` · ${leadName} takes ${atStake} if unbeaten${g.aceRule ? ' (Ace can’t win it)' : ''}`;
     if (g.trick.length === 0) return `Sarr ${g.trickNumber} — ${turnName} leads${tag}`;
+    // A rung lead on a winnable sar forfeits the pickup — say so.
+    const rungLed = g.rungRule && g.ledSuit === g.trump
+      && g.trickNumber >= 5 && g.trickNumber !== 13 && !g.barred;
+    if (rungLed) return `Sarr ${g.trickNumber} — ${SUIT_SYM[g.ledSuit]} led · ${turnName} to play · rung led, pile stays`;
     return `Sarr ${g.trickNumber} — ${SUIT_SYM[g.ledSuit]} led · ${turnName} to play${tag}`;
   }
 
@@ -168,6 +176,7 @@ export function createRungView({ send }) {
       const isHost = !!state.players.find(p => p.seat === state.youSeat)?.isHost;
       renderRuleToggle(state, isHost, '#rule-ace', 'aceCannotPick', "🂡 Ace can't win the sar");
       renderRuleToggle(state, isHost, '#rule-two-aces', 'secondAceIsTwo', '🂡🂡 2nd Ace in a row = 2');
+      renderRuleToggle(state, isHost, '#rule-rung-win', 'rungCannotWin', '🎺 Cannot win sar with Rung');
       // Short a 4th? The host can seat the bot (one max).
       if (isHost && !state.players.some(p => p.isBot)) {
         const addBot = $('#btn-add-bot');
@@ -256,6 +265,8 @@ export function createRungView({ send }) {
           toast(`${name(ev.seat)} heads the last sar — takes the ${ev.picked} left · ${score}`);
         } else if (ev.picked > 0) {
           toast(`💰 ${name(ev.seat)} defends the lead — picks up ${ev.picked} sarrein! ${score}`, 'thulla');
+        } else if (ev.rungBlocked) {
+          toast(`🎺 ${name(ev.seat)} stays senior, but a rung-led sar can't be won — pile stays at ${ev.pileSize}`);
         } else if (ev.aceBlocked) {
           toast(`🂡 ${name(ev.seat)} stays senior, but an Ace can't win the sar — pile stays at ${ev.pileSize}`);
         } else if (ev.barred) {
@@ -281,6 +292,10 @@ export function createRungView({ send }) {
           toast(ev.value
             ? '🂡🂡 House rule ON — a 2nd Ace in a row counts as a 2'
             : '🂡🂡 Rule off — every Ace plays at full strength');
+        } else if (ev.rule === 'rungCannotWin') {
+          toast(ev.value
+            ? '🎺 House rule ON — a rung-led sar can\'t be won, and the flush is forced'
+            : '🎺 Rule off — rung leads can win the sar like any other');
         }
         return true;
       case 'bot_added':

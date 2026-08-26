@@ -45,6 +45,16 @@
 //   The rule is a TRAP: players get no advance warning that their next
 //   Ace counts as a 2 (the view must not leak it), and the demoted throw
 //   is final — it opens no undo window.
+// - OPTIONAL (rules.rungCannotWin, ON by default): a sar led with the
+//   RUNG SUIT can never be picked up (except sar 13) — the pile stays,
+//   the header keeps/takes the lead, no bar. Leading rung is therefore a
+//   flush: on an otherwise-winnable sar (≥5, unbarred, not 13) the
+//   opposite team MUST beat the led rung card if they can. Team-smart:
+//   an earlier opponent may hold back only while their partner still to
+//   act holds a bigger rung card; released the moment anyone overtakes
+//   the led card. Never breaks follow-suit, and only cards that would
+//   GENUINELY beat the led card at effective rank qualify (an armed
+//   double-Ace counts as a 2 and is never compelled).
 // - One deal per game; the dealer seat rotates between deals (the room
 //   handles that).
 
@@ -106,6 +116,7 @@ export function createGame({ claimants = null, rng = Math.random, rules = {} } =
     rules: {
       aceCannotPick: rules.aceCannotPick ?? true,
       secondAceIsTwo: rules.secondAceIsTwo ?? true,
+      rungCannotWin: rules.rungCannotWin ?? true,
     },
     numPlayers: 4,
     acePending: [false, false, false, false], // seat's last card was a full Ace
@@ -173,7 +184,53 @@ export function legalMoves(state, seat) {
   const hand = state.hands[seat];
   if (state.trick.length === 0) return [...hand];
   const follow = hand.filter(c => suitOf(c) === state.ledSuit);
-  return follow.length ? follow : [...hand];
+  if (!follow.length) return [...hand];
+  // The rung-flush compulsion may narrow the choice further (never widen
+  // it — a forced card is always a legal follow, since rung was led).
+  return mustBeat(state, seat) ?? follow;
+}
+
+/* ---------- rule: Cannot win sar with Rung (the flush) ---------- */
+
+// A sar where leading rung forfeits the win AND compels the flush: the
+// pickup would otherwise be live, and the rung suit was led.
+function flushSar(state) {
+  return state.rules.rungCannotWin
+    && state.trick.length > 0
+    && state.ledSuit === state.trump
+    && state.trickNumber >= 5
+    && state.trickNumber !== 13
+    && !state.barred;
+}
+
+// The rank a card would fight at if `seat` played it right now — their
+// armed double-Ace pair can demote an Ace to a 2.
+function wouldRank(state, seat, card) {
+  const demoted = state.rules.secondAceIsTwo && card[0] === 'A' && state.acePending[seat];
+  return demoted ? rankValue('2S') : rankValue(card);
+}
+
+function beatsLed(state, seat, card) {
+  return suitOf(card) === state.trump
+    && wouldRank(state, seat, card) > effectiveRank(state.trick[0]);
+}
+
+// The cards `seat` is FORCED to choose from right now, or null when they
+// are free. Only the leader's opponents are ever compelled; an earlier
+// opponent may hold back only while their partner still to act could
+// beat the led card themselves; everyone is released the moment anyone
+// has overtaken it.
+export function mustBeat(state, seat) {
+  if (!flushSar(state)) return null;
+  const leaderSeat = state.trick[0].seat;
+  if (teamOf(seat) === teamOf(leaderSeat)) return null;
+  if (trickWinner(state).seat !== leaderSeat) return null; // already beaten
+  const qualifying = state.hands[seat].filter(c => beatsLed(state, seat, c));
+  if (!qualifying.length) return null;
+  const partner = (seat + 2) % 4;
+  const partnerToAct = !state.trick.some(p => p.seat === partner);
+  if (partnerToAct && state.hands[partner].some(c => beatsLed(state, partner, c))) return null;
+  return qualifying;
 }
 
 // A demoted Ace (second of a back-to-back pair) fights as the 2 of its
@@ -247,8 +304,10 @@ export function playCard(state, seat, card) {
     const couldPick = !state.barred && state.trickNumber >= 5 && defended;
     const aceBlocked = !isLast && couldPick
       && state.rules.aceCannotPick && header.card[0] === 'A' && !header.demoted;
+    const rungBlocked = !isLast && couldPick
+      && state.rules.rungCannotWin && state.ledSuit === state.trump;
     let picked = 0;
-    if (isLast || (couldPick && !aceBlocked)) {
+    if (isLast || (couldPick && !aceBlocked && !rungBlocked)) {
       picked = state.pile.length;
       state.tricksWon[team] += picked;
       state.pile = [];
@@ -262,6 +321,7 @@ export function playCard(state, seat, card) {
       defended, // the header was the sar's leader
       barred: state.barred, // this sar followed a pickup
       aceBlocked, // the Ace rule alone stopped this pickup
+      rungBlocked, // a rung-led sar can never be won
       tricksWon: [...state.tricksWon],
       pileSize: state.pile.length,
     });
