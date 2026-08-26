@@ -1,7 +1,8 @@
 // Bot test: 3 clients + the host-added bot play a full Rung deal. The bot
-// moves by itself (instantly, legally); the host can eject it anytime —
-// mid-game ejection dissolves the deal — and switching the room to Thulla
-// sends it home automatically.
+// moves by itself (legally, after its ~3s thinking pause — so this test
+// spends most of its runtime waiting on Botta); the host can eject it
+// anytime — mid-game ejection dissolves the deal — and switching the room
+// to Thulla sends it home automatically.
 const PORT = process.env.PORT ?? 8787;
 const BASE = `http://localhost:${PORT}`;
 

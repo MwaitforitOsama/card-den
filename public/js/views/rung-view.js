@@ -99,7 +99,9 @@ export function createRungView({ send }) {
       const pair = `${playerName(state, a).replace(' (you)', '')} or ${playerName(state, b).replace(' (you)', '')}`;
       return `${pair} will call the rung — cards come out once they decide`;
     }
+    const seatIsBot = s => state.players.find(p => p.seat === s)?.isBot;
     if (g.phase === 'calling') {
+      if (seatIsBot(g.caller)) return '🤖 Botta is thinking — picking the rung…';
       return state.youSeat === g.caller
         ? 'Your 5 cards are in — choose the rung!'
         : `${playerName(state, g.caller)} is choosing the rung…`;
@@ -110,6 +112,8 @@ export function createRungView({ send }) {
       return `⚔️ ${prettyCard(g.compelledBy)} led — a bigger rung card is forced!`;
     }
     const turnName = playerName(state, g.turn);
+    // Botta pauses before acting — say why the table is waiting.
+    const turnLabel = verb => seatIsBot(g.turn) ? `🤖 ${turnName} is thinking…` : `${turnName} ${verb}`;
     const leadName = playerName(state, g.leader).replace(' (you)', '');
     const atStake = g.pile.length + 1; // pile plus the sar being played
     let tag;
@@ -117,12 +121,12 @@ export function createRungView({ send }) {
     else if (g.barred) tag = ' · barred sar, no pickup';
     else if (g.trickNumber < 5) tag = ' · pile building';
     else tag = ` · ${leadName} takes ${atStake} if unbeaten${g.aceRule ? ' (Ace can’t win it)' : ''}`;
-    if (g.trick.length === 0) return `Sarr ${g.trickNumber} — ${turnName} leads${tag}`;
+    if (g.trick.length === 0) return `Sarr ${g.trickNumber} — ${turnLabel('leads')}${tag}`;
     // A rung lead on a winnable sar forfeits the pickup — say so.
     const rungLed = g.rungRule && g.ledSuit === g.trump
       && g.trickNumber >= 5 && g.trickNumber !== 13 && !g.barred;
-    if (rungLed) return `Sarr ${g.trickNumber} — ${SUIT_SYM[g.ledSuit]} led · ${turnName} to play · rung led, pile stays`;
-    return `Sarr ${g.trickNumber} — ${SUIT_SYM[g.ledSuit]} led · ${turnName} to play${tag}`;
+    if (rungLed) return `Sarr ${g.trickNumber} — ${SUIT_SYM[g.ledSuit]} led · ${turnLabel('to play')} · rung led, pile stays`;
+    return `Sarr ${g.trickNumber} — ${SUIT_SYM[g.ledSuit]} led · ${turnLabel('to play')}${tag}`;
   }
 
   /* ---------- center: pile, trump badge, score, call prompt ---------- */

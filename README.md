@@ -125,10 +125,13 @@ npm test           # engine unit tests, both games (node --test)
 ## The bot (Rung seat-filler)
 
 Three friends, no fourth? The host can seat **Botta 🤖** from the Rung
-lobby (one bot max). It plays instantly and strictly by the rules — a
-random legal card on its turn, its longest suit if the toss makes it the
-caller — and never claims the rung call (its human partner does). The
-game never waits on it: no grace timer, no voice, no undo. The host can
+lobby (one bot max). It plays strictly by the rules — a random legal
+card on its turn, its longest suit if the toss makes it the caller — and
+never claims the rung call (its human partner does). It pauses ~3
+seconds before every action ("🤖 Botta is thinking…") so the table can
+follow what it throws; the previous player's undo window stays open
+during the pause, same as against a slow human. Beyond that the game
+never waits on it: no grace timer, no voice, no undo. The host can
 eject it anytime via the ✕ on its chip — mid-game ejection dissolves the
 deal (nothing counted) — and switching the room to Thulla sends it home
 automatically.

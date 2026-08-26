@@ -12,6 +12,7 @@ import { BOTS } from './bots/index.js';
 
 const MAX_PLAYERS = 7; // room seat capacity (a game may use fewer)
 const GRACE_MS = 30_000; // reconnect window before a dropped player is cut
+const BOT_DELAY_MS = 3_000; // Botta's pause before acting, so humans can follow
 const UNDO_MS = 10_000; // window to take a misplayed card back
 const CHAT_KEEP = 100;
 const CHAT_MAX_LEN = 200;
@@ -162,26 +163,40 @@ export class GameRoom {
     }
   }
 
-  /* ---------- the bot (one seat-filler, moves instantly) ---------- */
+  /* ---------- the bot (one seat-filler, paced like a human) ---------- */
 
-  // After anything happens, let the bot act until a human is up again.
-  // The bot has no socket: handleMove's error path goes nowhere (ws null),
-  // which is fine — its moves are always legal by construction.
+  // After anything happens, arm the bot's turn — it acts BOT_DELAY_MS
+  // later so humans can follow what just landed (and the previous player
+  // keeps their undo window open during the pause, same as against a slow
+  // human). The timer is in-memory only; it's cheap to re-arm, and any
+  // message (or the alarm) re-enters here if it was ever lost.
   async runBots() {
-    if (this.botBusy || !this.room || !this.bot) return;
+    if (!this.room || !this.bot || this.botTimer) return;
     const seat = this.room.players.findIndex(p => p.isBot);
-    if (seat < 0) return;
-    this.botBusy = true;
-    try {
-      let guard = 0;
-      while (this.room.phase === 'playing' && this.room.game
-          && this.bot.needsAct(this.room.game, seat)) {
-        if (++guard > 60) break; // never loop forever on a logic bug
-        await this.handleMove(null, () => this.bot.act(this.room.game, seat));
-      }
-    } finally {
-      this.botBusy = false;
-    }
+    if (seat < 0 || this.room.phase !== 'playing' || !this.room.game) return;
+    if (!this.bot.needsAct(this.room.game, seat)) return;
+    this.botTimer = setTimeout(() => {
+      this.botTimer = null;
+      this.botAct().catch(() => {});
+    }, BOT_DELAY_MS);
+  }
+
+  // Runs when the pause ends. Re-validate everything: during the 3s the
+  // human may have taken back their card, the host may have ejected the
+  // bot or dissolved the game. The bot has no socket: handleMove's error
+  // path goes nowhere (ws null), which is fine — its moves are always
+  // legal by construction.
+  async botAct() {
+    if (!this.room || !this.bot) return;
+    const seat = this.room.players.findIndex(p => p.isBot);
+    if (seat < 0 || this.room.phase !== 'playing' || !this.room.game) return;
+    if (!this.bot.needsAct(this.room.game, seat)) return;
+    await this.handleMove(null, () => this.bot.act(this.room.game, seat));
+    await this.runBots(); // consecutive bot turns each get their own pause
+  }
+
+  clearBotTimer() {
+    if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
   }
 
   /* ---------- joining & leaving ---------- */
@@ -360,6 +375,7 @@ export class GameRoom {
 
   // Hands the deal to the adapter; returns the new game's opening events.
   startNewGame() {
+    this.clearBotTimer(); // a fresh deal starts with a fresh pause
     this.room.phase = 'playing';
     this.room.pendingTake = null;
     this.room.pendingConcede = null;
@@ -437,6 +453,7 @@ export class GameRoom {
   // no result to base the next rung call on, as if the deal never
   // happened — and return everyone to the lobby, seats kept.
   async abortGame(events) {
+    this.clearBotTimer(); // a pending bot move belongs to the dead game
     await this.clearGrace();
     this.room.phase = 'lobby';
     this.room.game = null;
