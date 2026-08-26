@@ -99,12 +99,14 @@ npm test           # engine unit tests, both games (node --test)
   shows the rule to everyone; the host can flip it between games for
   guests who play classic rung, and the setting sticks for the room.
 - **Two Aces together equal a 2** (university house rule, on by default,
-  own 🂡🂡 toggle): if the card you threw in the previous sar was an Ace —
-  won or lost — an Ace from you in this sar fights as the 2 of its suit
-  (a demoted trump Ace is still a trump, just the lowest one). It's no
-  longer an "Ace", so it CAN win the sar. Pairs only: the demotion
-  consumes the pair, a third consecutive Ace is a full Ace again, and any
-  non-Ace resets. It's a **trap**: there is no advance warning — the
+  own 🂡🂡 toggle): if your card in the previous sar was a full Ace that
+  **stayed senior** — it headed the sar when it resolved — an Ace from
+  you in this sar fights as the 2 of its suit (a demoted trump Ace is
+  still a trump, just the lowest one). It's no longer an "Ace", so it CAN
+  win the sar. An Ace that got cut or thrown off-suit arms nothing — you
+  were never senior. A pickup-blocked Ace (the 🂡 rule) still headed the
+  sar, so it arms. Pairs only: the demotion consumes the pair, a third
+  consecutive Ace is a full Ace again, and any non-Ace resets. It's a **trap**: there is no advance warning — the
   demotion is revealed only as the card lands ("counts as 2"), and that
   throw is final (no undo). Remember your own last card.
 - **Cannot win sar with Rung** (university house rule, on by default, own
@@ -163,9 +165,15 @@ button (or Space on desktop) to talk, release to mute. Audio flows directly
 between browsers over a WebRTC mesh — the server only relays the handshake.
 Spectators are in the call too. Mic access needs a secure context: it works
 on http://localhost, but **testing voice from phones requires the HTTPS
-`workers.dev` URL** (`npm run deploy`), not a LAN IP. If two players on
-mobile data can't hear each other, add a TURN server to `ICE_SERVERS` in
-`public/js/voice.js`.
+`workers.dev` URL** (`npm run deploy`), not a LAN IP.
+
+If a voice link dies (VPN toggle, Wi-Fi switch, flaky network), it heals
+itself: a brief grace for blips, then an ICE restart — fresh candidates
+over the same connection — retried with backoff up to 4 times before
+giving up on that peer (a toast says who) until the roster or the network
+changes. The mesh is UDP-only by design (no TURN relay): if two players
+on hostile networks still can't hear each other, that's the known ceiling
+— chat and the game are unaffected.
 
 ## Layout
 

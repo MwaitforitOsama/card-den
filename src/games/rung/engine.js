@@ -36,12 +36,15 @@
 //   the pile stays, they keep the lead, the next sar is winnable as
 //   normal. Sar 13 is immune (its header takes all, Ace or not).
 // - OPTIONAL (rules.secondAceIsTwo, ON by default): two Aces together
-//   equal a 2 — if the card a player threw in the previous sar was an
-//   Ace (won or lost), an Ace from them in this sar counts as the 2 of
-//   its suit: lowest rank, same suit (so a demoted trump Ace is still a
-//   trump), and no longer an "Ace" for the aceCannotPick rule — it CAN
-//   win the sar. Pairs only: the demoted Ace consumes the pair, so a
-//   third consecutive Ace is a full Ace again; any non-Ace resets.
+//   equal a 2 — if a player's card in the previous sar was a full Ace
+//   that STAYED SENIOR (it headed the sar when it resolved), an Ace from
+//   them in this sar counts as the 2 of its suit: lowest rank, same suit
+//   (so a demoted trump Ace is still a trump), and no longer an "Ace"
+//   for the aceCannotPick rule — it CAN win the sar. An Ace that got cut
+//   or discarded arms nothing. Pairs only: the demoted Ace consumes the
+//   pair, so a third consecutive Ace is a full Ace again; any non-Ace
+//   resets. Since an armed player headed the previous sar, they lead the
+//   next one — so an armed Ace can never meet the rung-flush compulsion.
 //   The rule is a TRAP: players get no advance warning that their next
 //   Ace counts as a 2 (the view must not leak it), and the demoted throw
 //   is final — it opens no undo window.
@@ -54,7 +57,8 @@
 //   act holds a bigger rung card; released the moment anyone overtakes
 //   the led card. Never breaks follow-suit, and only cards that would
 //   GENUINELY beat the led card at effective rank qualify (an armed
-//   double-Ace counts as a 2 and is never compelled).
+//   double-Ace counts as a 2 and is never compelled — unreachable in a
+//   real deal since arming implies leading, but kept as defense).
 // - One deal per game; the dealer seat rotates between deals (the room
 //   handles that).
 
@@ -272,11 +276,13 @@ export function playCard(state, seat, card) {
   if (!legalMoves(state, seat).includes(card)) throw new Error('You cannot play that card');
 
   // Two Aces together equal a 2: an Ace right after this player's
-  // previous (full) Ace is demoted; the pair is then consumed.
+  // previous (full, senior-staying) Ace is demoted; the pair is then
+  // consumed. Throwing anything spends the armed state — re-arming
+  // happens only at sar resolution, and only for the header.
   const isAce = card[0] === 'A';
   const prevAcePending = state.acePending[seat];
   const demoted = state.rules.secondAceIsTwo && isAce && prevAcePending;
-  state.acePending[seat] = isAce && !demoted;
+  state.acePending[seat] = false;
 
   const events = [{ type: 'played', seat, card, demoted }];
   const hand = state.hands[seat];
@@ -292,6 +298,9 @@ export function playCard(state, seat, card) {
     const header = trickWinner(state);
     const team = teamOf(header.seat);
     const isLast = state.trickNumber === 13;
+    // The trap arms only for an Ace that STAYED SENIOR: the header's own
+    // full Ace. Aces that were cut or discarded into the sar arm nothing.
+    state.acePending[header.seat] = header.card[0] === 'A' && !header.demoted;
     // The sar joins the face-up pile; it only leaves the table on a pickup.
     state.pile.push([...state.trick]);
     // Pickup rules: the header must be the sar's leader (they headed the

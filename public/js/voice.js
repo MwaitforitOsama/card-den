@@ -16,6 +16,13 @@ const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
 ];
 
+// Reconnects: 'disconnected' often heals itself, so wait before acting; a
+// recovery restarts ICE (fresh candidates, same connection) with a bounded
+// backoff — after the last attempt the peer is dropped and left alone.
+const DISCONNECT_GRACE_MS = 4000;
+const MAX_RECOVERY_ATTEMPTS = 4;
+const backoffMs = attempt => 2000 * 2 ** (attempt - 1); // 2s, 4s, 8s, 16s
+
 export function initVoice(send) {
   let myId = null;
   let localStream = null; // null until mic granted; false = denied
@@ -23,6 +30,9 @@ export function initVoice(send) {
   const peers = new Map(); // peerId -> RTCPeerConnection
   const audioEls = new Map(); // peerId -> <audio>
   const speaking = new Set(); // peerIds currently transmitting
+  const health = new Map(); // peerId -> { attempts, graceTimer, retryTimer }
+  const gaveUp = new Set(); // peers past the retry budget — no rebuilds until the roster or network changes
+  const names = new Map(); // peerId -> display name, for failure toasts
 
   /* ---------- mic ---------- */
 
@@ -62,6 +72,7 @@ export function initVoice(send) {
   function createPeer(peerId) {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     peers.set(peerId, pc);
+    gaveUp.delete(peerId); // a fresh connection gets a fresh retry budget
 
     if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 
@@ -87,8 +98,21 @@ export function initVoice(send) {
         send({ type: 'rtc', to: peerId, data: { kind: 'sdp', sdp: pc.localDescription } });
       } catch { /* peer may be mid-teardown */ }
     };
-    pc.oniceconnectionstatechange = () => {
-      if (pc.iceConnectionState === 'failed') dropPeer(peerId); // rebuilt on next state
+    pc.onconnectionstatechange = () => {
+      const h = healthOf(peerId);
+      if (pc.connectionState === 'connected') {
+        h.attempts = 0;
+        clearTimeout(h.graceTimer); h.graceTimer = null;
+        clearTimeout(h.retryTimer); h.retryTimer = null;
+      } else if (pc.connectionState === 'disconnected') {
+        if (!h.graceTimer) {
+          h.graceTimer = setTimeout(() => { h.graceTimer = null; attemptRecovery(peerId); },
+            DISCONNECT_GRACE_MS);
+        }
+      } else if (pc.connectionState === 'failed') {
+        clearTimeout(h.graceTimer); h.graceTimer = null;
+        attemptRecovery(peerId);
+      }
     };
     return pc;
   }
@@ -103,6 +127,38 @@ export function initVoice(send) {
     audioEls.get(peerId)?.remove();
     audioEls.delete(peerId);
     speaking.delete(peerId);
+    const h = health.get(peerId);
+    if (h) { clearTimeout(h.graceTimer); clearTimeout(h.retryTimer); health.delete(peerId); }
+  }
+
+  /* ---------- reconnects ---------- */
+
+  function healthOf(peerId) {
+    let h = health.get(peerId);
+    if (!h) { h = { attempts: 0, graceTimer: null, retryTimer: null }; health.set(peerId, h); }
+    return h;
+  }
+
+  // Only the offerer (lower peerId) can restart ICE; the other side asks for
+  // it with a relayed 'restart' message. Each attempt schedules a recheck —
+  // if the link still isn't up after the backoff, try again until the budget
+  // runs out, then drop the peer and stop.
+  function attemptRecovery(peerId) {
+    const pc = peers.get(peerId);
+    if (!pc || pc.connectionState === 'connected') return;
+    const h = healthOf(peerId);
+    clearTimeout(h.retryTimer); h.retryTimer = null;
+    if (h.attempts >= MAX_RECOVERY_ATTEMPTS) {
+      toast(`🔇 Voice to ${names.get(peerId) ?? 'a player'} couldn't reconnect`, 'error');
+      gaveUp.add(peerId);
+      dropPeer(peerId);
+      return;
+    }
+    h.attempts += 1;
+    if (isInitiator(peerId)) pc.restartIce(); // → negotiationneeded → fresh offer
+    else send({ type: 'rtc', to: peerId, data: { kind: 'restart' } });
+    h.retryTimer = setTimeout(() => { h.retryTimer = null; attemptRecovery(peerId); },
+      backoffMs(h.attempts));
   }
 
   /* ---------- signaling ---------- */
@@ -111,6 +167,13 @@ export function initVoice(send) {
     const peerId = msg.from;
     const data = msg.data || {};
     let pc = peers.get(peerId);
+    if (data.kind === 'restart') {
+      // The non-offerer noticed the link die and asks us to restart ICE.
+      if (!isInitiator(peerId)) return;
+      if (pc) pc.restartIce();
+      else createPeer(peerId); // they tore their side down — offer from scratch
+      return;
+    }
     if (!pc && data.kind === 'sdp' && data.sdp?.type === 'offer') pc = createPeer(peerId);
     if (!pc) return;
     try {
@@ -177,12 +240,18 @@ export function initVoice(send) {
     ensureMic();
     const wanted = roster(state);
     const wantedIds = new Set(wanted.map(p => p.peerId));
+    names.clear();
+    wanted.forEach(p => names.set(p.peerId, p.name));
     for (const peerId of [...peers.keys()]) {
       if (!wantedIds.has(peerId)) dropPeer(peerId);
     }
+    // A peer who left and came back has a new peerId — forget the old grudge.
+    for (const peerId of [...gaveUp]) {
+      if (!wantedIds.has(peerId)) gaveUp.delete(peerId);
+    }
     for (const p of wanted) {
       // The lower id calls; the higher id waits for the offer.
-      if (!peers.has(p.peerId) && isInitiator(p.peerId)) createPeer(p.peerId);
+      if (!peers.has(p.peerId) && !gaveUp.has(p.peerId) && isInitiator(p.peerId)) createPeer(p.peerId);
     }
     applySpeaking();
   }
@@ -190,6 +259,8 @@ export function initVoice(send) {
   function reset() {
     for (const peerId of [...peers.keys()]) dropPeer(peerId);
     speaking.clear();
+    gaveUp.clear();
+    names.clear();
     setPushed(false);
     if (localStream) localStream.getTracks().forEach(t => t.stop());
     localStream = null;
@@ -215,6 +286,20 @@ export function initVoice(send) {
   });
   window.addEventListener('keyup', e => {
     if (e.code === 'Space' && !inTextField()) setPushed(false);
+  });
+
+  // Our network came back (VPN toggle, Wi-Fi switch): every candidate is
+  // stale, so skip the backoff and retry everything at once, fresh budget.
+  window.addEventListener('online', () => {
+    gaveUp.clear();
+    for (const [peerId, pc] of peers) {
+      if (pc.connectionState === 'connected') continue;
+      const h = healthOf(peerId);
+      h.attempts = 0;
+      clearTimeout(h.graceTimer); h.graceTimer = null;
+      clearTimeout(h.retryTimer); h.retryTimer = null;
+      attemptRecovery(peerId);
+    }
   });
 
   // Browsers may block remote audio until a user gesture: unlock on any tap.
