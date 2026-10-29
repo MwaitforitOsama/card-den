@@ -24,6 +24,12 @@ are asked their name once). Typing the 4-letter code by hand still works
 too. Between games the host can switch what the room plays with the
 ⇄ button — same code, same chat and voice call.
 
+## How to play
+
+New players: open `/how-to-play.html` (linked as 📖 on the home screen and
+❓ in the table header). It covers Thulla, Rung with its house-rule
+switches, and the room's buttons, with worked examples.
+
 ## Test
 
 ```sh
@@ -72,8 +78,8 @@ npm test           # engine unit tests, both games (node --test)
   game, Thulla in between, a winner left, seat swaps split the pair).
   **Nothing is dealt until the caller is decided.**
 - The caller is dealt 5 cards along with everyone else and picks the rung
-  from those 5, announced to the table. The rest is then dealt 4-4-4 and
-  the caller leads the first sar.
+  from those 5, announced to the table. The rest is then dealt 4 + 4
+  (5 + 4 + 4 = 13 cards each) and the caller leads the first sar.
 - Follow suit if you can; anything (including trump) if you can't. Highest
   trump heads the sar, otherwise the highest card of the led suit; the
   header leads the next sar.
@@ -163,10 +169,14 @@ freely — the game doesn't wait for them.
 
 ## Voice
 
-Joining a room auto-joins a push-to-talk group voice call: hold the 🎙
-button (or Space on desktop) to talk, release to mute. Audio flows directly
-between browsers over a WebRTC mesh — the server only relays the handshake.
-Spectators are in the call too. Mic access needs a secure context: it works
+Voice is opt-in: tap 🎧 to join the room's push-to-talk call, then hold
+the 🎙 button (or Space on desktop) to talk. Audio flows directly between
+voice members over a WebRTC mesh — the server only relays the handshake
+and tracks who joined. To spare phone batteries the mesh is silent when
+idle: the mic is attached only while the button is held (nothing is
+encoded or sent otherwise), the mic is released after 15s without a press,
+Opus runs mono with DTX at ~20 kbps, and a tab left in the background
+leaves voice after a minute. Spectators can listen but not talk. Mic access needs a secure context: it works
 on http://localhost, but **testing voice from phones requires the HTTPS
 `workers.dev` URL** (`npm run deploy`), not a LAN IP.
 

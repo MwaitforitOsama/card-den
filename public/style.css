@@ -159,6 +159,14 @@ input:focus { border-color: var(--gold); }
   padding: 10px 14px;
 }
 #btn-leave { padding: 6px 12px; font-size: 0.85rem; }
+/* "How to play" opens in a new tab so the room stays connected. */
+.help-link { color: var(--gold); text-decoration: none; font-size: 0.9rem; }
+#btn-help {
+  padding: 5px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.85rem;
+}
 #room-code {
   font-weight: 800;
   letter-spacing: 5px;
@@ -350,6 +358,43 @@ input:focus { border-color: var(--gold); }
   32% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
   75% { opacity: 1; }
   100% { transform: translate(-50%, -50%) scale(1.08); opacity: 0; }
+}
+
+/* Thulla's opening: name the A♠ holder before the card lands. */
+.ace-reveal {
+  position: fixed;
+  top: 36%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  width: max-content;
+  max-width: min(92vw, 440px);
+  background: rgba(0, 0, 0, 0.82);
+  border: 2px solid var(--gold);
+  border-radius: 16px;
+  box-shadow: 0 0 32px rgba(234, 179, 8, 0.55);
+  pointer-events: none;
+  animation: ace-reveal-in 0.35s ease-out;
+}
+.ace-reveal .card { flex: none; }
+.ace-reveal-text { font-size: 1.15rem; font-weight: 800; line-height: 1.35; }
+.ace-reveal-text b { color: var(--gold); }
+.ace-reveal-text small { display: block; font-size: 0.8rem; font-weight: 500; opacity: 0.75; }
+@keyframes ace-reveal-in {
+  from { transform: translate(-50%, -50%) scale(0.6); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+.player-chip.ace-holder {
+  border-color: var(--gold);
+  animation: ace-holder-pulse 0.9s ease-in-out infinite alternate;
+}
+@keyframes ace-holder-pulse {
+  from { box-shadow: 0 0 4px rgba(234, 179, 8, 0.4); }
+  to { box-shadow: 0 0 22px rgba(234, 179, 8, 0.95); }
 }
 
 .player-chip.thulla-hit {

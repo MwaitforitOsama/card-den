@@ -13,7 +13,7 @@ import { createRungView } from './views/rung-view.js';
 
 export function createGameView({ send }) {
   const VIEWS = {
-    thulla: createThullaView({ send }),
+    thulla: createThullaView({ send, rerender: () => lastState && render(lastState) }),
     rung: createRungView({ send }),
   };
   let currentView = VIEWS.thulla;
@@ -117,6 +117,7 @@ export function createGameView({ send }) {
     $('#screen-table').hidden = false;
     $('#room-code').textContent = state.code;
     $('#room-game').textContent = state.gameTitle || '';
+    $('#btn-help').href = `/how-to-play.html#${state.gameId || 'thulla'}`;
     const g = state.game;
     const me = state.players.find(p => p.seat === state.youSeat);
     // Who this tab is playing as — vital with several tabs open at once.
@@ -168,7 +169,7 @@ export function createGameView({ send }) {
       '#rule-ace', '#rule-two-aces', '#rule-rung-win', '#btn-add-bot']) {
       $(id).hidden = true;
     }
-    if (g && state.phase !== 'lobby') renderTrickCards(state, g.trick);
+    if (g && state.phase !== 'lobby') renderTrickCards(state, view.visibleTrick?.(state) ?? g.trick);
     else $('#trick').innerHTML = '';
     view.renderCenter(state);
     renderGrace(state);
@@ -249,7 +250,8 @@ export function createGameView({ send }) {
       !!g && state.phase !== 'lobby' && state.youSeat >= 0 && g.hand.length > 0 && g.hand.length <= 7);
     if (g && state.phase !== 'lobby' && state.youSeat >= 0) {
       const legal = new Set(g.legal || []);
-      const myTurn = g.phase === 'playing' && g.turn === state.youSeat;
+      // A view may briefly lock the hand (Thulla's A♠ reveal at the deal).
+      const myTurn = g.phase === 'playing' && g.turn === state.youSeat && !view.handLocked?.();
       for (const card of g.hand) {
         const node = cardEl(card);
         const playable = myTurn && legal.has(card);

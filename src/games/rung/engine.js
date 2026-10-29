@@ -12,7 +12,7 @@
 //   to claim it) — the room falls back to a toss whenever that result
 //   can't apply cleanly. NOTHING is dealt until the caller is decided.
 // - The caller gets 5 cards along with everyone else, announces the trump
-//   suit publicly, then the rest is dealt 4-4-4. The caller leads the
+//   suit publicly, then the rest is dealt 4 + 4 (5 + 4 + 4 = 13 each). The caller leads the
 //   first sar. (No dealer role — the server deals.)
 // - Follow suit if you can; anything (including trump) if you can't.
 //   Highest trump heads the sar, else highest card of the led suit; the
@@ -129,7 +129,7 @@ export function createGame({ claimants = null, rng = Math.random, rules = {} } =
     toss: null, // toss rounds for display: [[{seat, card}] …]
     phase: 'choosing', // 'choosing' | 'calling' | 'playing' | 'over'
     trump: null,
-    undealt: shuffle(makeDeck(), rng), // dealt in 5 / 4-4-4 batches
+    undealt: shuffle(makeDeck(), rng), // dealt in 5 / 4 / 4 batches (13 each)
     hands: [[], [], [], []],
     trickNumber: 1,
     trick: [], // [{seat, card}] in play order
@@ -175,7 +175,7 @@ export function callTrump(state, seat, suit) {
     throw new Error('Pick a suit for the rung');
   }
   state.trump = suit;
-  for (const n of [4, 4, 4]) dealBatch(state.hands, state.undealt, state.caller, n);
+  for (const n of [4, 4]) dealBatch(state.hands, state.undealt, state.caller, n);
   state.undealt = [];
   state.phase = 'playing';
   state.leader = state.caller;

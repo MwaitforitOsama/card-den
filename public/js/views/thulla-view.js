@@ -11,16 +11,26 @@ import {
 } from './table-common.js';
 
 const WASTE_STACK_MAX = 14;
+const ACE_REVEAL_MS = 2200; // how long the "X has the A♠" reveal holds the table
 
-export function createThullaView({ send }) {
+export function createThullaView({ send, rerender }) {
   let freshCards = new Set(); // cards just picked up, marked until your next play
+  // The deal auto-throws the A♠ in the same broadcast, so nobody would see
+  // who held it. For a moment after 'started' we name the holder, keep the
+  // card off the table and lock hands, then fly it in from their chip.
+  let opening = null; // { seat, name, timer } while the reveal plays
 
   // Cards you just picked up (thulla or a taken hand) stay marked in your
   // hand until you throw your next card — otherwise they vanish into the
   // sorted hand and you can't tell what you actually received.
   function onState(msg, events, prevGame) {
     const me = msg.youSeat;
-    if (events.some(ev => ev.type === 'started')) freshCards = new Set();
+    if (events.some(ev => ev.type === 'started')) {
+      freshCards = new Set();
+      startAceReveal(msg, events);
+    } else if (opening && events.some(ev => ev.type === 'played')) {
+      endAceReveal({ animate: false }); // someone already played on: catch up
+    }
     if (me < 0 || !msg.game) return;
     if (events.some(ev => ev.type === 'played' && ev.seat === me)) freshCards = new Set();
     const pickedUp = events.some(ev =>
@@ -32,6 +42,61 @@ export function createThullaView({ send }) {
       toast(`You picked up: ${[...freshCards].map(prettyCard).join('  ')}`);
     }
   }
+
+  /* ---------- the A♠ reveal (first sarr only) ---------- */
+
+  function startAceReveal(state, events) {
+    const ev = events.find(e => e.type === 'played' && e.card === 'AS');
+    endAceReveal({ animate: false, render: false });
+    if (!ev) return;
+    opening = {
+      seat: ev.seat,
+      name: playerName(state, ev.seat),
+      timer: setTimeout(() => endAceReveal({ animate: true }), ACE_REVEAL_MS),
+    };
+
+    const who = ev.seat === state.youSeat
+      ? 'You have'
+      : `<b>${escapeHtml(playerName(state, ev.seat))}</b> has`;
+    const banner = el('div', 'ace-reveal');
+    banner.appendChild(cardEl('AS', { mini: true }));
+    const text = el('div', 'ace-reveal-text');
+    text.innerHTML = `${who} the Ace of Spades<small>throwing it to open sarr 1…</small>`;
+    banner.appendChild(text);
+    document.body.appendChild(banner);
+  }
+
+  function endAceReveal({ animate, render = true }) {
+    if (!opening) return;
+    clearTimeout(opening.timer);
+    const { seat, name } = opening;
+    opening = null;
+    document.querySelectorAll('.ace-reveal').forEach(n => n.remove());
+    if (!render) return;
+    rerender();
+    if (!animate) return;
+    flyAceIn(seat);
+    toast(`♠️ <b>${escapeHtml(name)}</b> threw the Ace of Spades`);
+  }
+
+  // The A♠ travels from its holder's chip to its spot on the table.
+  function flyAceIn(seat) {
+    const node = document.querySelector('#trick .trick-card .card[data-card="AS"]')?.closest('.trick-card');
+    const from = chipRect(seat);
+    if (!node || !from) return;
+    const to = node.getBoundingClientRect();
+    const dx = (from.left + from.width / 2) - (to.left + to.width / 2);
+    const dy = (from.top + from.height / 2) - (to.top + to.height / 2);
+    node.animate([
+      { transform: `translate(${dx}px, ${dy}px) scale(0.45) rotate(-14deg)`, opacity: 0.3 },
+      { transform: 'translate(0, 0) scale(1.15) rotate(3deg)', opacity: 1, offset: 0.75 },
+      { transform: 'none', opacity: 1 },
+    ], { duration: 650, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)' });
+  }
+
+  const visibleTrick = state =>
+    (opening ? state.game.trick.filter(p => p.card !== 'AS') : state.game.trick);
+  const handLocked = () => !!opening;
 
   function decorateCard(card, node) {
     if (freshCards.has(card)) node.classList.add('fresh');
@@ -52,6 +117,10 @@ export function createThullaView({ send }) {
 
   function chipDecor(state, p, chip) {
     const g = state.game;
+    if (opening && p.seat === opening.seat) {
+      chip.classList.add('ace-holder');
+      return 'has the A♠ ♠️';
+    }
     if (!p.connected) chip.classList.add('offline');
     if (p.safe) chip.classList.add('safe');
     if (g && state.phase === 'over' && g.bhabhi === p.seat) chip.classList.add('bhabhi');
@@ -70,6 +139,7 @@ export function createThullaView({ send }) {
   function statusText(state, next) {
     const g = state.game;
     if (!g || g.phase !== 'playing') return '';
+    if (opening) return `Sarr 1 — ${playerName(state, opening.seat)} has the A♠ and throws it…`;
     const turnName = playerName(state, g.turn);
     const nextName = next !== null ? ` · ${playerName(state, next).replace(' (you)', '')} next` : '';
     if (g.trick.length === 0) {
@@ -212,7 +282,7 @@ export function createThullaView({ send }) {
     const name = seat => escapeHtml(playerName(state, seat));
     switch (ev.type) {
       case 'started':
-        toast(`Cards dealt! ${name(ev.leader)} opens with the A♠`);
+        toast('🃏 Cards dealt!');
         return true;
       case 'thulla':
         toast(`💥 THULLA! ${name(ev.winner)} picks up ${ev.cards.length} cards`, 'thulla');
@@ -250,12 +320,13 @@ export function createThullaView({ send }) {
 
   function reset() {
     freshCards = new Set();
+    endAceReveal({ animate: false, render: false });
   }
 
   return {
     id: 'thulla',
     minPlayers: 3,
-    onState, decorateCard, nextSeat, chipDecor, lobbyNote, statusText,
+    onState, decorateCard, visibleTrick, handLocked, nextSeat, chipDecor, lobbyNote, statusText,
     renderCenter, overlayHTML, resolutionOf, fly, announce, reset,
   };
 }

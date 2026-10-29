@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to play — Taash Adda</title>
+<meta name="description" content="How to play Bhabhi Thulla and Rung (Court Piece) on Taash Adda — rules, house-rule switches and buttons explained for new players.">
+<meta name="theme-color" content="#14532d">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎴</text></svg>">
+<style>
+  :root {
+    --felt-1: #14532d;
+    --felt-2: #052e16;
+    --gold: #eab308;
+    --text: #f0fdf4;
+    --muted: rgba(240, 253, 244, 0.72);
+    --line: rgba(255, 255, 255, 0.12);
+    --panel: rgba(0, 0, 0, 0.32);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(ellipse at 50% 0%, var(--felt-1), var(--felt-2) 70%) fixed;
+    color: var(--text);
+    line-height: 1.65;
+    font-size: 16px;
+  }
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    background: rgba(5, 46, 22, 0.92);
+    backdrop-filter: blur(6px);
+    border-bottom: 1px solid var(--line);
+  }
+  .topbar a.back {
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.12);
+    white-space: nowrap;
+  }
+  .tabs { display: flex; gap: 6px; margin-left: auto; }
+  .tabs a {
+    color: var(--text);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  .tabs a.active { background: var(--gold); color: #1c1917; border-color: var(--gold); }
+  @media (max-width: 420px) {
+    .topbar { padding: 8px 10px; gap: 6px; }
+    .topbar a.back, .tabs a { padding: 5px 9px; font-size: 0.82rem; }
+    .tabs { gap: 4px; }
+  }
+
+  main { max-width: 780px; margin: 0 auto; padding: 24px 18px 80px; }
+  article[hidden] { display: none; }
+
+  h1 { font-size: 2rem; margin: 8px 0 4px; letter-spacing: 0.5px; }
+  h1 + .lede { margin-top: 0; }
+  h2 {
+    font-size: 1.35rem;
+    margin: 40px 0 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+    color: var(--gold);
+  }
+  h3 { font-size: 1.08rem; margin: 26px 0 6px; }
+  p, ul, ol { margin: 10px 0; }
+  ul, ol { padding-left: 1.4em; }
+  li { margin: 4px 0; }
+  .lede { color: var(--muted); font-size: 1.05rem; }
+  strong { color: #fff; }
+  a { color: var(--gold); }
+  code, kbd {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.88em;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 1px 6px;
+  }
+  .red { color: #f87171; }
+
+  .callout {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--gold);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin: 16px 0;
+  }
+  .callout p { margin: 4px 0; }
+  .callout.tip { border-left-color: #4ade80; }
+  .callout.warn { border-left-color: #f87171; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+    font-size: 0.95rem;
+    background: var(--panel);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { background: rgba(0, 0, 0, 0.3); font-weight: 700; }
+  tr:last-child td { border-bottom: none; }
+  .table-wrap { overflow-x: auto; }
+
+  .toc {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 12px 18px;
+    margin: 18px 0 8px;
+  }
+  .toc strong { display: block; margin-bottom: 4px; }
+  .toc ol { margin: 4px 0; }
+  .toc a { color: var(--text); text-decoration: none; border-bottom: 1px dotted var(--muted); }
+
+  .switch {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 4px 18px 10px;
+    margin: 16px 0;
+  }
+  .switch h3 { margin-top: 14px; }
+  .badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: #166534;
+    border: 1px solid #4ade80;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+
+  footer { color: var(--muted); font-size: 0.85rem; text-align: center; margin-top: 50px; }
+
+  /* ---------- animated mini-table scenes ---------- */
+  .scene {
+    position: relative;
+    margin: 18px auto 8px;
+    max-width: 380px;
+    background: radial-gradient(ellipse at 50% 45%, #166534, #052e16 80%);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+  }
+  .scene-felt { position: relative; height: 270px; }
+  .scene-seat {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    font-size: 0.78rem;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    white-space: nowrap;
+    transition: box-shadow 0.3s, border-color 0.3s, background 0.3s;
+  }
+  .scene-seat.glow { border-color: var(--gold); box-shadow: 0 0 16px rgba(234, 179, 8, 0.9); }
+  .scene-seat.hit { border-color: #ef4444; background: #7f1d1d; box-shadow: 0 0 18px rgba(239, 68, 68, 0.9); }
+  .scene-seat.win { border-color: #4ade80; background: #14532d; box-shadow: 0 0 18px rgba(74, 222, 128, 0.9); }
+  .scene-card {
+    position: absolute;
+    width: 44px;
+    height: 62px;
+    margin: -31px 0 0 -22px;
+    border-radius: 5px;
+    background: #fff;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+  }
+  .scene-card img { width: 100%; height: 100%; display: block; border-radius: 5px; }
+  .scene-card .tag {
+    position: absolute;
+    left: 50%;
+    top: 100%;
+    transform: translate(-50%, 3px);
+    font-size: 0.62rem;
+    font-weight: 800;
+    color: #1c1917;
+    background: var(--gold);
+    border-radius: 6px;
+    padding: 0 5px;
+    white-space: nowrap;
+  }
+  .scene-heap { position: absolute; transform: translate(-50%, -50%); text-align: center; font-size: 0.68rem; color: var(--muted); }
+  .scene-heap .scene-card { position: relative; margin: 0 auto 2px; display: block; }
+  .scene-badge {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    padding: 3px 9px;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid var(--gold);
+  }
+  .scene-splash {
+    position: absolute;
+    left: 50%;
+    top: 46%;
+    transform: translate(-50%, -50%);
+    font-size: 1.9rem;
+    font-weight: 900;
+    color: #fbbf24;
+    text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9), 0 0 24px rgba(234, 88, 12, 0.9);
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .scene figcaption {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    background: rgba(0, 0, 0, 0.4);
+    border-top: 1px solid var(--line);
+    font-size: 0.9rem;
+    min-height: 3.6em;
+  }
+  .scene-say { flex: 1; }
+  .scene-replay {
+    flex: none;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 4px 9px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <a class="back" href="/">← Back</a>
+  <div class="tabs">
+    <a href="#thulla" data-tab="thulla">♠ Thulla</a>
+    <a href="#rung" data-tab="rung">🎺 Rung</a>
+    <a href="#room" data-tab="room">🎛 Room</a>
+  </div>
+</nav>
+
+<main>
+
+<!-- =============================== THULLA =============================== -->
+<article id="thulla" data-page="thulla">
+  <h1>♠ Bhabhi Thulla</h1>
+  <p class="lede">Get rid of all your cards. The last person still holding cards is the
+  <strong>Bhabhi</strong>, and that's the one result you don't want.</p>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ol>
+      <li><a href="#t-glance">At a glance</a></li>
+      <li><a href="#t-setup">Setup &amp; the deal</a></li>
+      <li><a href="#t-first">Trick 1: the Ace of Spades</a></li>
+      <li><a href="#t-play">Playing a trick</a></li>
+      <li><a href="#t-thulla">What is a "thulla"?</a></li>
+      <li><a href="#t-safe">Getting safe &amp; the end of the game</a></li>
+      <li><a href="#t-take">Switch: Ask to take cards</a></li>
+      <li><a href="#t-concede">Switch: Concede</a></li>
+      <li><a href="#t-undo">Switch: Change card (undo)</a></li>
+      <li><a href="#t-example">A worked example</a></li>
+      <li><a href="#t-tips">Tips for new players</a></li>
+      <li><a href="#t-words">Words you'll hear</a></li>
+    </ol>
+  </div>
+
+  <h2 id="t-glance">1. At a glance</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Players</th><td>3 to 7</td></tr>
+    <tr><th>Deck</th><td>One standard 52-card deck, no jokers</td></tr>
+    <tr><th>Card order</th><td><strong>A</strong> (highest) K Q J 10 9 8 7 6 5 4 3 <strong>2</strong> (lowest)</td></tr>
+    <tr><th>Trump suit</th><td>None. Only the suit that was led matters.</td></tr>
+    <tr><th>Goal</th><td>Empty your hand. The last player with cards is the Bhabhi (loser).</td></tr>
+    <tr><th>Scoreboard</th><td>Thulla only hands out losses 💀. Nobody "wins", everyone else just escapes.</td></tr>
+  </table></div>
+
+  <h2 id="t-setup">2. Setup &amp; the deal</h2>
+  <ul>
+    <li>Someone creates a room with <strong>♠ Thulla</strong> selected and shares the 4-letter code or invite link.</li>
+    <li>Once at least 3 people are seated, the host presses <strong>Start game</strong>.</li>
+    <li>All 52 cards are dealt out as evenly as possible. With 5 players, for example, some get 11 cards and some get 10.</li>
+    <li>Your hand is sorted by suit at the bottom of the screen. Tap a card to play it when it's your turn.</li>
+  </ul>
+
+  <h2 id="t-first">3. Trick 1: the Ace of Spades</h2>
+  <ul>
+    <li>Whoever holds the <strong>A♠</strong> starts. Right after the deal, everyone sees a banner such as
+      <em>"Ali has the Ace of Spades"</em> and Ali's chip glows gold. A moment later the game throws the card for them
+      automatically, and it can't be taken back.</li>
+    <li>Everyone then plays one card in turn (clockwise).</li>
+    <li><strong>Trick 1 is special:</strong> no matter what anyone plays, even a different suit, the trick just goes to
+      the <strong>waste pile</strong>. Nobody picks anything up on trick 1.</li>
+    <li>Since the A♠ is the highest spade, its holder also <strong>leads trick 2</strong>, and that's where the real game starts.</li>
+  </ul>
+  <div class="callout tip"><p>💡 Trick 1 is a free chance to get rid of a card you don't want, because nothing bad can happen yet.</p></div>
+
+  <figure class="scene" data-scene="thulla-open"></figure>
+
+  <h2 id="t-play">4. Playing a trick (trick 2 onward)</h2>
+  <ol>
+    <li>The leader plays any card. Its suit is the <strong>led suit</strong>.</li>
+    <li>Everyone after them <strong>must follow suit</strong> (play the same suit) if they have it.</li>
+    <li>If everyone follows suit, it's a <strong>clean trick</strong>: the cards go to the waste pile, and whoever played the
+      highest card of the led suit leads the next trick.</li>
+    <li>If someone can't follow suit, they play any other card. That's a <strong>thulla</strong> (next section).</li>
+  </ol>
+
+  <figure class="scene" data-scene="thulla-clean"></figure>
+
+  <h2 id="t-thulla">5. What is a "thulla"?</h2>
+  <p>A thulla is an off-suit card played by someone who has run out of the led suit. It changes everything:</p>
+  <ul>
+    <li>The trick <strong>ends immediately</strong>. Players after the thulla don't play to it.</li>
+    <li>The player who played the <strong>highest card of the led suit</strong> has to <strong>pick up the whole trick</strong>,
+      thulla card included, into their hand.</li>
+    <li>That same player then leads the next trick.</li>
+  </ul>
+  <figure class="scene" data-scene="thulla-hit"></figure>
+  <div class="callout warn"><p>⚠️ The thulla card itself doesn't count as "highest". Only cards of the led suit can be highest. So
+    playing a big card in the led suit is risky: if someone after you throws a thulla, you're the one picking up.</p></div>
+
+  <h2 id="t-safe">6. Getting safe &amp; the end of the game</h2>
+  <ul>
+    <li>When your hand is empty you're <strong>safe</strong> ("bahar"). You stop playing and watch the rest.</li>
+    <li>There's no drawing from the waste pile. If your <em>last</em> card wins a clean trick, you're still safe, and the next
+      player who still has cards leads.</li>
+    <li>The game ends when only one player has cards left. That player is the <strong>Bhabhi</strong> 💀.</li>
+    <li>If the last players all empty their hands on the same trick, the game is a <strong>draw</strong>.</li>
+    <li>When it ends, the host can press <strong>Play again</strong> for a new deal. The scoreboard keeps counting.</li>
+  </ul>
+
+  <h2 id="t-take">7. Switch: Ask to take cards</h2>
+  <p>This button shows up for the leader as <code>Ask to take &lt;name&gt;'s cards (N)</code>.</p>
+  <ul>
+    <li><strong>When:</strong> only when it's your turn to <em>lead</em>, from trick 2 on, and before you play a card.</li>
+    <li><strong>What:</strong> you ask to take the <strong>whole hand</strong> of the next player (clockwise) who still has cards.</li>
+    <li><strong>Their choice:</strong> they see <em>Hand them over</em> / <em>Decline</em>. Nothing moves unless they accept.</li>
+    <li>If they accept, all their cards come to you and they are <strong>instantly safe</strong>.</li>
+    <li>If they decline, you can ask again later. Playing a card instead cancels the request.</li>
+    <li><strong>Not allowed</strong> once only 2 players have cards left.</li>
+  </ul>
+  <div class="callout"><p>Why take cards? A bigger hand with more suits makes you less likely to run out of a suit, and you get
+    to choose what to lead. It's a gamble, though, because you now have more cards to get rid of.</p></div>
+
+  <h2 id="t-concede">8. Switch: Concede 🏳️</h2>
+  <ul>
+    <li><strong>When:</strong> only when exactly 2 players still have cards.</li>
+    <li>Either of them can press <strong>🏳️ Concede the game</strong> when the ending is obvious, to save time.</li>
+    <li>The other player sees <em>Accept the win</em> / <em>Keep playing</em>.</li>
+    <li>If they accept, the game ends at once: the player who conceded is the Bhabhi ("game parr gayi").</li>
+    <li>If they decline, play continues and the offer can be made again. Playing a card cancels a pending offer.</li>
+  </ul>
+
+  <h2 id="t-undo">9. Switch: Change card (undo) ↩</h2>
+  <ul>
+    <li>Tapped the wrong card? A <strong>↩ Change card (10s)</strong> button appears right after you play.</li>
+    <li>You have about <strong>10 seconds</strong>, and only until the next card hits the table.</li>
+    <li>The automatic A♠ opening can't be undone.</li>
+  </ul>
+
+  <h2 id="t-example">10. A worked example</h2>
+  <p>Four players: <strong>Ali, Bilal, Saad, Hamza</strong>. It's trick 5 and Ali leads.</p>
+  <ol>
+    <li>Ali leads <strong class="red">9♥</strong>.</li>
+    <li>Bilal follows with <strong class="red">K♥</strong>.</li>
+    <li>Saad has no hearts left, so he plays <strong>4♣</strong>. <strong>Thulla!</strong></li>
+    <li>The trick ends right away; Hamza doesn't play. The highest heart is Bilal's K♥, so <strong>Bilal picks up</strong> all three cards
+      (9♥, K♥, 4♣) and leads the next trick.</li>
+  </ol>
+  <p>If Saad had a heart instead, say <strong class="red">3♥</strong>, and Hamza also followed, the trick would be clean.
+    It would go to the waste pile and Bilal (K♥) would lead next without picking anything up.</p>
+
+  <h2 id="t-tips">11. Tips for new players</h2>
+  <ul>
+    <li>Keep track of which suits each player has run out of, because they're the ones who can thulla.</li>
+    <li>Get rid of high cards early, while everyone still has the suit and a thulla is less likely.</li>
+    <li>When a suit has gone round a few times, play low in it. The person with the highest card is the one who gets hit.</li>
+    <li>Running out of a suit yourself is good: it means you can thulla someone else.</li>
+  </ul>
+
+  <h2 id="t-words">12. Words you'll hear</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Word</th><th>Meaning</th></tr>
+    <tr><td><strong>Thulla</strong></td><td>An off-suit card that ends the trick and makes the highest led-suit card pick up.</td></tr>
+    <tr><td><strong>Bhabhi</strong></td><td>The loser: the last player still holding cards.</td></tr>
+    <tr><td><strong>Bahar / Safe</strong></td><td>Out of the game with an empty hand.</td></tr>
+    <tr><td><strong>Waste pile</strong></td><td>Where clean tricks go. Those cards are gone for good.</td></tr>
+    <tr><td><strong>Game parr gayi</strong></td><td>Someone conceded. The game is over and they lost.</td></tr>
+  </table></div>
+</article>
+
+<!-- ================================ RUNG ================================ -->
+<article id="rung" data-page="rung" hidden>
+  <h1>🎺 Rung (Court Piece)</h1>
+  <p class="lede">Two teams of two. Win <strong>7 of the 13 sars</strong> for your team. This is the Pakistani
+    <strong>double-sar</strong> version: winning a sar on its own isn't enough, you have to win twice in a row to collect.</p>
+
+  <div class="toc">
+    <strong>On this page</strong>
+    <ol>
+      <li><a href="#r-glance">At a glance</a></li>
+      <li><a href="#r-teams">Teams &amp; seats</a></li>
+      <li><a href="#r-call">Who calls the rung (trump)</a></li>
+      <li><a href="#r-deal">The deal &amp; choosing the rung</a></li>
+      <li><a href="#r-sar">Playing a sar</a></li>
+      <li><a href="#r-pile">The pile: how sars are actually won</a></li>
+      <li><a href="#r-bar">The bar after a pickup</a></li>
+      <li><a href="#r-end">Sar 13 &amp; winning the game</a></li>
+      <li><a href="#r-switches">House-rule switches</a></li>
+      <li><a href="#r-buttons">Other buttons</a></li>
+      <li><a href="#r-example">A worked example</a></li>
+      <li><a href="#r-tips">Tips for new players</a></li>
+      <li><a href="#r-words">Words you'll hear</a></li>
+    </ol>
+  </div>
+
+  <h2 id="r-glance">1. At a glance</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Players</th><td>Exactly 4, in 2 teams</td></tr>
+    <tr><th>Deck</th><td>One standard 52-card deck, 13 cards each</td></tr>
+    <tr><th>Card order</th><td><strong>A</strong> (highest) K Q J 10 9 8 7 6 5 4 3 <strong>2</strong> (lowest)</td></tr>
+    <tr><th>Rung</th><td>The trump suit. Any rung card beats any card of another suit.</td></tr>
+    <tr><th>Goal</th><td>Your team collects 7 or more of the 13 sars. Winning 13–0 is a <strong>whitewash</strong> 🧹.</td></tr>
+    <tr><th>Scoreboard</th><td>All four players get a 🏆 win or a 💀 loss. Whitewashes are counted separately.</td></tr>
+  </table></div>
+
+  <h2 id="r-teams">2. Teams &amp; seats</h2>
+  <ul>
+    <li><strong>Seats 1 &amp; 3</strong> are one team, <strong>seats 2 &amp; 4</strong> the other. Partners sit opposite each other.</li>
+    <li>In the lobby or between games, the <strong>host</strong> can tap two players to <strong>swap their seats</strong> and set the teams.</li>
+    <li>If more than 4 people are seated, the first four play and the rest sit out that deal.</li>
+    <li>Only 3 of you? The host can tap <strong>🤖 Add a bot</strong> to seat <strong>Botta</strong> (see <a href="#room-bot">Botta</a>).</li>
+  </ul>
+
+  <h2 id="r-call">3. Who calls the rung</h2>
+  <ul>
+    <li><strong>First game: a toss.</strong> Everyone gets one card face up, and the highest card calls the rung.
+      <ul>
+        <li>If players on opposite teams tie, only they toss again.</li>
+        <li>If both partners of the same team tie, that team has won the toss.</li>
+      </ul>
+    </li>
+    <li><strong>After that:</strong> the team that won the last game picks. Whichever partner taps
+      <strong>🎺 I'll pick the rung</strong> first becomes the caller, so sort it out on voice.</li>
+    <li>The room goes back to a toss when the last result doesn't apply: the last game was aborted, you played Thulla in between,
+      a winner left, or a seat swap split the winning pair.</li>
+    <li>No cards are dealt until the caller is decided.</li>
+  </ul>
+
+  <h2 id="r-deal">4. The deal &amp; choosing the rung</h2>
+  <ol>
+    <li>Everyone gets <strong>5 cards</strong>.</li>
+    <li>The caller looks at their 5 cards and taps a suit (♠ <span class="red">♥</span> ♣ <span class="red">♦</span>). That suit is the <strong>rung</strong>
+      and it's announced to everyone.</li>
+    <li>The rest of the cards are dealt in two more rounds of 4, so everyone has <strong>5 + 4 + 4 = 13</strong>.</li>
+    <li>The <strong>caller leads the first sar</strong>.</li>
+  </ol>
+  <figure class="scene" data-scene="rung-call"></figure>
+  <div class="callout tip"><p>💡 Caller: pick the suit you have the most of, or the strongest cards in, among your first 5.</p></div>
+
+  <h2 id="r-sar">5. Playing a sar</h2>
+  <p>A <strong>sar</strong> is one round where each of the 4 players plays a card (what other games call a trick).</p>
+  <ol>
+    <li>The leader plays any card.</li>
+    <li>Everyone else <strong>must follow suit</strong> if they can.</li>
+    <li>If you can't follow suit, play anything, including a rung (trump) card. Using a rung card here is called <strong>cutting</strong>.</li>
+    <li>The highest rung card played <strong>heads</strong> the sar. If no rung was played, the highest card of the led suit heads it.</li>
+    <li>Whoever heads the sar is <strong>senior</strong> and leads the next one.</li>
+  </ol>
+
+  <figure class="scene" data-scene="rung-cut"></figure>
+
+  <h2 id="r-pile">6. The pile: how sars are actually won</h2>
+  <p>This is what makes double-sar different from regular Court Piece.</p>
+  <ul>
+    <li><strong>Heading a sar does not win it.</strong> Finished sars stay face up in a <strong>pile</strong> in the middle.</li>
+    <li>To <strong>pick up the pile</strong>, the <strong>same player</strong> must head a sar and then head the
+      <strong>next</strong> one too, the one they lead. In other words: win, then defend your lead.</li>
+    <li>If <strong>anyone</strong> beats the leader, opponent <em>or partner</em>, the pickup fails. The pile stays, and the new senior
+      player now has to defend in turn.</li>
+    <li><strong>Sars 1–4 can never be picked up.</strong> The earliest pickup is sar 5.</li>
+    <li>A pickup takes the <strong>whole pile</strong> for your team. Picking up at sar 5 means 5 sars at once.</li>
+  </ul>
+  <figure class="scene" data-scene="rung-pile"></figure>
+  <div class="callout"><p>The status line tells you what's at stake, for example
+    <em>"Ali takes 6 if unbeaten"</em>.</p></div>
+
+  <h2 id="r-bar">7. The bar after a pickup</h2>
+  <ul>
+    <li>The sar <strong>right after a pickup is barred</strong>. Nobody can pick it up, and it starts the new pile.</li>
+    <li>The same player can still collect the next pile. For example, pick up at 5, head the barred 6, defend 7, and you take 6 + 7.</li>
+  </ul>
+
+  <h2 id="r-end">8. Sar 13 &amp; winning the game</h2>
+  <ul>
+    <li>All 13 sars are always played.</li>
+    <li><strong>Sar 13 is special:</strong> whoever heads it takes <strong>everything left</strong> in the pile, even without defending,
+      even if it's barred. So the two teams' totals always add up to 13.</li>
+    <li>The first team to reach <strong>7</strong> wins. The win is announced as soon as it's certain, and the remaining sars are still played to settle the margin.</li>
+    <li><strong>13–0 is a whitewash</strong> 🧹.</li>
+    <li>The host presses <strong>Play again</strong> for the next deal. The deal rotates around the table.</li>
+  </ul>
+
+  <h2 id="r-switches">9. House-rule switches</h2>
+  <p>Before a game and on the game-over screen, three buttons above the table show which house rules are on, for example
+    <code>🂡 Ace can't win the sar: ON</code>. <strong>Everyone can see them; only the host can flip them</strong>, and only
+    between games. The settings stay for the room. All three are <strong>ON by default</strong>. Turn them off for guests
+    who play classic rung.</p>
+
+  <div class="switch">
+    <h3>🂡 Ace can't win the sar <span class="badge">default ON</span></h3>
+    <ul>
+      <li>If you defend your lead (try to pick up the pile) and your card heading that sar is <strong>an Ace</strong>,
+        you stay senior but <strong>pick up nothing</strong>.</li>
+      <li>The pile stays, you keep the lead, and the next sar can be won as normal.</li>
+      <li>An Ace can still <em>head</em> or <em>cut</em> a sar. It just can't be the card that collects.</li>
+      <li><strong>Sar 13 is not affected:</strong> an Ace heading sar 13 still takes everything.</li>
+    </ul>
+  <figure class="scene" data-scene="rung-ace"></figure>
+    <p><strong>OFF (classic):</strong> Aces pick up like any other card.</p>
+  </div>
+
+  <div class="switch">
+    <h3>🂡🂡 2nd Ace in a row = 2 <span class="badge">default ON</span></h3>
+    <ul>
+      <li>If the card you played in the <strong>previous sar</strong> was an Ace that <strong>stayed senior</strong>
+        (it headed that sar), then an Ace you play in <strong>this</strong> sar counts as the
+        <strong>2 of its suit</strong>, the lowest card.</li>
+      <li>A demoted rung Ace is still a rung card, just the lowest one.</li>
+      <li>Because it's now a "2" and not an Ace, it <em>can</em> win the sar even with the 🂡 rule on.</li>
+      <li>An Ace that got cut or was thrown off-suit doesn't count: you weren't senior.</li>
+      <li>It works in pairs only. A third Ace in a row is a full Ace again, and any non-Ace resets it.</li>
+    </ul>
+    <div class="callout warn"><p>⚠️ <strong>It's a trap:</strong> the game doesn't warn you. You only find out when the card lands
+      (<em>"counts as 2"</em>), and that play <strong>can't be undone</strong>. Remember what you played last sar!</p></div>
+  <figure class="scene" data-scene="rung-double-ace"></figure>
+    <p><strong>OFF:</strong> every Ace plays at full strength.</p>
+  </div>
+
+  <div class="switch">
+    <h3>🎺 Cannot win sar with Rung <span class="badge">default ON</span></h3>
+    <ul>
+      <li>A sar <strong>led with a rung (trump) card</strong> can never be picked up, except sar 13.
+        The pile stays, the senior player keeps the lead, and there's no bar.</li>
+      <li>To collect the pile you must lead a <strong>plain (non-rung) suit</strong>.</li>
+      <li><strong>The forced beat:</strong> when a rung card is led on a sar that could otherwise be picked up (sar 5 or later,
+        not barred, not 13), the <strong>other team must beat the led rung card if they can</strong>.
+        <ul>
+          <li>It's team-aware: the first opponent may hold back <em>only if</em> their partner, still to play, has a bigger rung card.</li>
+          <li>Once someone beats the led card, nobody else is forced.</li>
+          <li>It never overrides follow-suit, and a demoted "Ace = 2" is never forced.</li>
+        </ul>
+      </li>
+    </ul>
+  <figure class="scene" data-scene="rung-flush"></figure>
+    <p><strong>OFF:</strong> rung leads can win the sar like any other lead.</p>
+  </div>
+
+  <h2 id="r-buttons">10. Other buttons</h2>
+  <ul>
+    <li><strong>↩ Change card (10s)</strong>: take back a misplayed card within about 10 seconds, until the next card is played.
+      This isn't available for a card demoted by the 🂡🂡 rule.</li>
+    <li><strong>⇄ Switch to Thulla</strong> (host, between games): change the room's game. The bot leaves automatically.</li>
+    <li><strong>🤖 Add a bot</strong> / ✕ on its chip (host): seat or remove Botta.</li>
+  </ul>
+
+  <h2 id="r-example">11. A worked example</h2>
+  <p>Teams: <strong>Ali &amp; Saad</strong> vs <strong>Bilal &amp; Hamza</strong>. The rung is <strong class="red">♥</strong>. All switches ON.</p>
+  <ol>
+    <li><strong>Sars 1–4:</strong> they're played and stay in the pile (4 sars). Ali heads sar 4, so he's senior and leads sar 5.</li>
+    <li><strong>Sar 5:</strong> Ali leads <strong>K♠</strong>. Bilal plays 7♠, Saad 3♠, Hamza 9♠. Nobody beat him, so
+      <strong>Ali's team picks up all 5 sars</strong>. Score 5–0.</li>
+    <li><strong>Sar 6 is barred.</strong> Bilal cuts with <strong class="red">4♥</strong> and heads it. It goes into a new pile (1 sar), and Bilal leads sar 7.</li>
+    <li><strong>Sar 7:</strong> Bilal leads <strong>A♣</strong> and nobody beats it. Because of the 🂡 rule, an Ace <em>can't win the sar</em>:
+      Bilal stays senior but the pile (now 2 sars) stays put.</li>
+    <li><strong>Sar 8:</strong> Bilal leads A♦. His last card was an Ace that stayed senior, so under the 🂡🂡 rule this
+      <strong>A♦ counts as 2♦</strong>. Saad plays 5♦ and beats it, so Saad is now senior. The pile is 3 sars.</li>
+    <li><strong>Sar 9:</strong> Saad leads <strong class="red">Q♥</strong> (rung). Because of the 🎺 rule a rung-led sar can't be won, and
+      Bilal and Hamza <em>must</em> beat the Q♥ if they can. Hamza plays <strong class="red">A♥</strong>, so Hamza is senior. The pile is 4.</li>
+    <li><strong>Sar 10:</strong> Hamza leads J♠ and nobody beats it. <strong>Hamza's team takes the pile of 5</strong> (sars 6–10). Score 5–5.</li>
+    <li>Sar 11 is barred, and play continues until sar 13, whose header takes whatever is left.</li>
+  </ol>
+
+  <h2 id="r-tips">12. Tips for new players</h2>
+  <ul>
+    <li>Count rung cards. Once the big ones are out, your medium rung cards become winners.</li>
+    <li>Don't beat your partner when they're about to collect. Overtaking them spoils the pickup.</li>
+    <li>With the 🂡 rule on, defend with a <strong>King</strong> rather than an Ace when you want to collect.</li>
+    <li>With the 🎺 rule on, leading rung is a safe way to keep the lead and pull out the other team's rung cards, but it never collects.</li>
+    <li>Talk on voice when your team wins: decide who picks the rung before tapping.</li>
+  </ul>
+
+  <h2 id="r-words">13. Words you'll hear</h2>
+  <div class="table-wrap"><table>
+    <tr><th>Word</th><th>Meaning</th></tr>
+    <tr><td><strong>Rung</strong></td><td>The trump suit chosen by the caller.</td></tr>
+    <tr><td><strong>Sar</strong></td><td>One round of 4 cards (a trick). There are 13 per game.</td></tr>
+    <tr><td><strong>Senior</strong></td><td>The player currently heading. They lead the next sar.</td></tr>
+    <tr><td><strong>Cut</strong></td><td>Playing a rung card when you can't follow suit.</td></tr>
+    <tr><td><strong>Pile</strong></td><td>Sars played but not yet collected, lying face up in the middle.</td></tr>
+    <tr><td><strong>Pickup</strong></td><td>Collecting the whole pile by heading a sar and then defending the lead.</td></tr>
+    <tr><td><strong>Bar</strong></td><td>The sar straight after a pickup. It can't be picked up.</td></tr>
+    <tr><td><strong>Whitewash</strong> 🧹</td><td>Winning 13–0.</td></tr>
+  </table></div>
+</article>
+
+<!-- ============================ ROOM & BUTTONS ============================ -->
+<article id="room" data-page="room" hidden>
+  <h1>🎛 Room &amp; buttons</h1>
+  <p class="lede">Everything outside the card rules: joining, voice, chat, the host's controls and what happens if someone drops.</p>
+
+  <h2 id="room-join">Joining a room</h2>
+  <ul>
+    <li><strong>Create:</strong> enter your name, pick ♠ Thulla or 🎺 Rung, then tap <strong>Create a room</strong>.</li>
+    <li><strong>Invite:</strong> tap the gold room code at the top to copy an invite link. Anyone who opens it joins automatically.</li>
+    <li><strong>Join by code:</strong> type the 4-letter code and tap <strong>Join</strong>.</li>
+    <li><strong>Joining mid-game?</strong> You watch as a spectator 👁 and get dealt in when the game ends.</li>
+    <li><strong>Same name = same seat.</strong> If you get disconnected, rejoin with the same name to get your seat back.</li>
+  </ul>
+
+  <h2 id="room-voice">Voice chat 🎧 🎙</h2>
+  <ul>
+    <li>Voice is <strong>opt-in</strong>. Tap <strong>🎧</strong> (right side, above the cards) to join. It turns blue when you're in. Tap it again to leave.</li>
+    <li>Allow the microphone when your browser asks.</li>
+    <li><strong>Hold 🎙 to talk</strong> and let go to stop. On a computer, hold <kbd>Space</kbd>.</li>
+    <li>A green glow on someone's chip means they're talking.</li>
+    <li>Spectators can listen but not talk (👂).</li>
+    <li>If you switch to another app for more than a minute, voice turns itself off to save battery. Tap 🎧 to rejoin.</li>
+  </ul>
+
+  <h2 id="room-chat">Chat 💬</h2>
+  <p>Tap <strong>💬 Chat</strong> for the room chat. Everyone, including spectators, sees every message. A red badge shows unread messages.</p>
+
+  <h2 id="room-host">Host controls</h2>
+  <p>The host is the first connected player in the seat order. If they leave, the badge moves to the next person.</p>
+  <div class="table-wrap"><table>
+    <tr><th>Button</th><th>What it does</th></tr>
+    <tr><td><strong>Start game / Play again</strong></td><td>Deals a new game once enough players are seated (Thulla 3+, Rung 4).</td></tr>
+    <tr><td><strong>⇄ Switch to …</strong></td><td>Changes the room between Thulla and Rung between games. Same code, chat and voice.</td></tr>
+    <tr><td><strong>Tap two players</strong> (Rung)</td><td>Swaps their seats to arrange teams.</td></tr>
+    <tr><td><strong>Rule toggles</strong> (Rung)</td><td>Turn the house-rule switches on or off. See <a href="#r-switches">Rung switches</a>.</td></tr>
+    <tr><td id="room-bot"><strong>🤖 Add a bot</strong> (Rung)</td><td>Seats <strong>Botta</strong>, a simple bot that follows the rules
+      and plays a random legal card after a ~3-second pause. It never claims the rung call. Remove it with the ✕ on its chip.
+      Removing it mid-game cancels that deal.</td></tr>
+    <tr><td><strong>🛑 Dissolve game</strong></td><td>Tap twice to cancel the current game. Nothing is recorded and everyone keeps their seat.</td></tr>
+  </table></div>
+
+  <h2 id="room-drop">If someone disconnects</h2>
+  <ul>
+    <li>Everyone sees a <strong>30-second countdown</strong>. If the player is back in time, the game just continues.</li>
+    <li>If not, they're removed and a new game starts automatically with whoever is left (or the room goes back to the lobby if there are too few players).</li>
+    <li>Thulla players who are already safe can leave freely.</li>
+  </ul>
+
+  <h2 id="room-score">Scoreboard</h2>
+  <p>Each player's chip shows 🎮 games, 🏆 wins and 💀 losses. The full standings appear on the game-over screen with the biggest loser 👑
+    on top. Stats survive reconnects but reset if you leave the room. Aborted games don't count.</p>
+</article>
+
+<footer>🎴 Taash Adda, the card den · <a href="/">Back to the game</a></footer>
+</main>
+
+<script>
+  // Tabs: the hash picks the page (#thulla, #rung, #room) or any heading
+  // inside one; the matching article is shown and the tab highlighted.
+  const pages = [...document.querySelectorAll('article[data-page]')];
+  const tabs = [...document.querySelectorAll('.tabs a')];
+
+  function show() {
+    const id = decodeURIComponent(location.hash.slice(1));
+    const target = id && document.getElementById(id);
+    const page = target?.closest('article[data-page]') ?? pages[0];
+    pages.forEach(p => { p.hidden = p !== page; });
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === page.dataset.page));
+    if (target && target !== page) target.scrollIntoView();
+    else window.scrollTo(0, 0);
+  }
+
+  window.addEventListener('hashchange', show);
+  show();
+
+  /* ---------- animated mini-table scenes ----------
+     Each <figure data-scene> gets a four-seat felt. A scene is a list of
+     steps run in order; one step may combine several actions:
+       say: caption · glow: seat|null · play: [seat, card, tag?]
+       sweep: 'waste'|'pile' · pickup: seat · collect: [seats] (pile → team)
+       pile: n (preset pile count) · badge: text · splash: text
+       fan: [seat, cards] / unfan · wait: ms after the step (default 1000)
+     Seats go clockwise from the bottom: 0 Ali, 1 Bilal, 2 Saad, 3 Hamza —
+     so in Rung, Ali & Saad and Bilal & Hamza are partners (opposite). */
+
+  const SEAT_NAMES = ['Ali', 'Bilal', 'Saad', 'Hamza'];
+
+  const SCENES = {
+    'thulla-open': [
+      { say: 'Cards are dealt. <b>Ali</b> has the A♠.', glow: 0, wait: 1400 },
+      { say: 'Ali throws the <b>A♠</b> to open sarr 1.', play: [0, 'AS'], wait: 1200 },
+      { say: 'Bilal follows with a spade.', play: [1, '7S'] },
+      { say: 'Saad has no spades and throws a heart. On sarr 1 that is fine.', play: [2, 'QH'], wait: 1600 },
+      { say: 'Hamza follows with a spade.', play: [3, '2S'] },
+      { say: 'Sarr 1 always goes to the <b>waste pile</b>. Nobody picks up.', sweep: 'waste', wait: 1500 },
+      { say: 'The A♠ was the highest spade, so <b>Ali leads sarr 2</b>.', glow: 0, wait: 1800 },
+    ],
+    'thulla-clean': [
+      { say: '<b>Ali</b> leads the 9♥.', glow: 0, play: [0, '9H'] },
+      { say: 'Bilal follows with the K♥.', glow: null, play: [1, 'KH'] },
+      { say: 'Saad follows with the 3♥.', play: [2, '3H'] },
+      { say: 'Hamza follows with the 5♥.', play: [3, '5H'] },
+      { say: 'Everyone followed suit: a <b>clean trick</b>. It goes to the waste pile.', sweep: 'waste', wait: 1500 },
+      { say: "Bilal's K♥ was the highest heart, so <b>Bilal leads next</b>.", glow: 1, wait: 1800 },
+    ],
+    'thulla-hit': [
+      { say: '<b>Ali</b> leads the 9♥.', glow: 0, play: [0, '9H'] },
+      { say: 'Bilal plays the K♥, the highest heart so far.', glow: null, play: [1, 'KH'] },
+      { say: 'Saad has <b>no hearts</b> left and throws the 4♣…', play: [2, '4C'], wait: 900 },
+      { splash: '💥 THULLA!', say: 'Thulla! The trick ends right here. Hamza does not play.', wait: 1600 },
+      { say: 'Bilal played the highest heart, so <b>Bilal picks up all 3 cards</b> and leads next.', pickup: 1, wait: 2200 },
+    ],
+    'rung-call': [
+      { say: '<b>Ali</b> is the caller and gets his first 5 cards.', glow: 0, fan: [0, ['AH', 'KH', '9H', '4C', '7S']], wait: 1600 },
+      { say: 'Three hearts with the A and K: Ali picks <b>♥ as the rung</b>.', badge: 'Rung ♥', wait: 1800 },
+      { say: 'Two more rounds of 4 cards each: <b>5 + 4 + 4 = 13</b>. Ali leads sar 1.', unfan: true, wait: 2000 },
+    ],
+    'rung-cut': [
+      { badge: 'Rung ♥', say: '<b>Ali</b> leads the K♠.', glow: 0, play: [0, 'KS'] },
+      { say: 'Bilal follows with the 3♠.', glow: null, play: [1, '3S'] },
+      { say: 'Saad follows with the 7♠.', play: [2, '7S'] },
+      { say: 'Hamza has no spades, so he <b>cuts</b> with the 4♥, a rung card.', play: [3, '4H'], wait: 1400 },
+      { say: 'Any rung card beats every other suit: <b>Hamza heads the sar</b> and leads next.', glow: 3, wait: 1600 },
+      { say: 'But heading is not winning: the sar goes onto the <b>pile</b>.', sweep: 'pile', wait: 2000 },
+    ],
+    'rung-pile': [
+      { badge: 'Rung ♥', pile: 4, say: 'Sars 1–4 are on the pile. <b>Ali</b> headed sar 4, so he leads sar 5.', glow: 0, wait: 1800 },
+      { say: 'Ali leads the Q♣.', play: [0, 'QC'] },
+      { say: 'Bilal plays the 5♣.', play: [1, '5C'] },
+      { say: 'Saad plays the 2♣.', play: [2, '2C'] },
+      { say: 'Hamza plays the 9♣.', play: [3, '9C'] },
+      { say: 'Nobody beat Ali: he <b>defended his lead</b>.', sweep: 'pile', wait: 1400 },
+      { say: 'Ali & Saad pick up the <b>whole pile: 5 sars</b>!', collect: [0, 2], wait: 2200 },
+    ],
+    'rung-ace': [
+      { badge: 'Rung ♥', pile: 2, say: '<b>Bilal</b> headed the last sar. If he heads this one too, he collects the pile.', glow: 1, wait: 1800 },
+      { say: 'He leads the A♣.', play: [1, 'AC'] },
+      { say: 'Saad plays the 3♣.', play: [2, '3C'] },
+      { say: 'Hamza plays the 8♣.', play: [3, '8C'] },
+      { say: 'Ali plays the J♣. Nobody beat the Ace.', play: [0, 'JC'], wait: 1400 },
+      { say: "But <b>an Ace can't win the sar</b>: the pile stays on the table.", sweep: 'pile', wait: 1600 },
+      { say: 'Bilal is still senior and leads next. He can still collect on the next sar.', glow: 1, wait: 2000 },
+    ],
+    'rung-double-ace': [
+      { badge: 'Rung ♥', say: "Last sar, Bilal's A♣ stayed senior. Now he leads <b>another Ace</b>, the A♦…", glow: 1, wait: 1600 },
+      { say: 'Two Aces in a row: this A♦ <b>counts as a 2</b>!', play: [1, 'AD', 'counts as 2'], wait: 1800 },
+      { say: 'Saad plays the J♦, which now beats it.', glow: null, play: [2, 'JD'] },
+      { say: 'Hamza plays the 4♦.', play: [3, '4D'] },
+      { say: 'Ali plays the 6♦.', play: [0, '6D'] },
+      { say: '<b>Saad heads the sar</b>. Bilal fell into the trap. Remember your last card!', glow: 2, wait: 2200 },
+    ],
+    'rung-flush': [
+      { badge: 'Rung ♥', pile: 3, say: '<b>Saad</b> leads the Q♥, a rung card. A rung-led sar can never be won.', glow: 2, play: [2, 'QH'], wait: 1800 },
+      { say: 'Hamza is on the other team and holds the A♥, so he <b>must beat</b> the Q♥.', glow: null, play: [3, 'AH'], wait: 1600 },
+      { say: 'Ali plays the 6♥.', play: [0, '6H'] },
+      { say: 'Bilal plays the 2♥.', play: [1, '2H'] },
+      { say: 'Hamza heads the sar, but nobody collects: the pile just grows.', sweep: 'pile', glow: 3, wait: 2200 },
+    ],
+  };
+
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  function cardNode(card, tag) {
+    const node = document.createElement('div');
+    node.className = 'scene-card';
+    const img = document.createElement('img');
+    img.alt = card || 'card back';
+    img.src = card ? `/cards/${card}.svg` : '/cards/back.svg';
+    node.appendChild(img);
+    if (tag) {
+      const t = document.createElement('div');
+      t.className = 'tag';
+      t.textContent = tag;
+      node.appendChild(t);
+    }
+    return node;
+  }
+
+  function mountScene(fig) {
+    const steps = SCENES[fig.dataset.scene];
+    if (!steps) return;
+    fig.innerHTML = '';
+    const felt = document.createElement('div');
+    felt.className = 'scene-felt';
+    const cap = document.createElement('figcaption');
+    const say = document.createElement('span');
+    say.className = 'scene-say';
+    const replay = document.createElement('button');
+    replay.className = 'scene-replay';
+    replay.type = 'button';
+    replay.textContent = '↻ Replay';
+    cap.append(say, replay);
+    fig.append(felt, cap);
+
+    let run = 0; // bumps on every (re)start so stale loops stop
+    let visible = false;
+    let running = false;
+
+    // Geometry is read live so the scene survives resizes.
+    const W = () => felt.clientWidth;
+    const H = () => felt.clientHeight;
+    const seatPos = i => [[W() / 2, H() - 16], [52, H() / 2], [W() / 2, 16], [W() - 52, H() / 2]][i];
+    const slotPos = i => {
+      const cx = W() / 2, cy = H() / 2;
+      return [[cx, cy + 40], [cx - 52, cy], [cx, cy - 40], [cx + 52, cy]][i];
+    };
+    const wastePos = () => [W() - 38, H() - 48];
+    const pilePos = () => [40, H() - 52];
+    const place = (node, [x, y]) => { node.style.left = x + 'px'; node.style.top = y + 'px'; };
+
+    function reset() {
+      felt.innerHTML = '';
+      const seats = SEAT_NAMES.map((name, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'scene-seat';
+        chip.textContent = name;
+        place(chip, seatPos(i));
+        felt.appendChild(chip);
+        return chip;
+      });
+      const waste = document.createElement('div');
+      waste.className = 'scene-heap';
+      waste.hidden = true;
+      waste.append(cardNode(null), Object.assign(document.createElement('div'), { textContent: 'waste' }));
+      place(waste, wastePos());
+      const pile = document.createElement('div');
+      pile.className = 'scene-heap';
+      pile.hidden = true;
+      const pileLabel = document.createElement('div');
+      pile.append(cardNode(null), pileLabel);
+      place(pile, pilePos());
+      felt.append(waste, pile);
+      say.innerHTML = '';
+      return { seats, waste, pile, pileLabel, pileCount: 0, trick: [], fan: [], badge: null };
+    }
+
+    function setPile(t, n, topCard) {
+      t.pileCount = n;
+      t.pile.hidden = n <= 0;
+      t.pileLabel.textContent = `pile: ${n} sar${n === 1 ? '' : 's'}`;
+      if (topCard) t.pile.querySelector('img').src = `/cards/${topCard}.svg`;
+    }
+
+    // Move a node from point a to point b (centres), returning when done.
+    function fly(node, from, to, { duration = 600, scaleFrom = 1, scaleTo = 1, fadeOut = false } = {}) {
+      place(node, to);
+      const anim = node.animate([
+        { transform: `translate(${from[0] - to[0]}px, ${from[1] - to[1]}px) scale(${scaleFrom})`, opacity: scaleFrom < 1 ? 0.4 : 1 },
+        { transform: `translate(0, 0) scale(${scaleTo})`, opacity: fadeOut ? 0 : 1 },
+      ], { duration: reducedMotion ? 0 : duration, easing: 'cubic-bezier(0.3, 0.7, 0.4, 1)', fill: 'forwards' });
+      return anim.finished.catch(() => {});
+    }
+
+    async function step(t, st) {
+      if (st.say !== undefined) say.innerHTML = st.say;
+      if (st.badge) {
+        t.badge ??= felt.appendChild(Object.assign(document.createElement('div'), { className: 'scene-badge' }));
+        t.badge.textContent = st.badge;
+      }
+      if (st.pile !== undefined) setPile(t, st.pile, 'KD');
+      if ('glow' in st) t.seats.forEach((c, i) => c.classList.toggle('glow', i === st.glow));
+      if (st.fan) {
+        const [seat, cards] = st.fan;
+        const [sx, sy] = seatPos(seat);
+        cards.forEach((card, i) => {
+          const node = cardNode(card);
+          felt.appendChild(node);
+          t.fan.push(node);
+          const off = (i - (cards.length - 1) / 2) * 30;
+          fly(node, [sx, sy], [W() / 2 + off, H() / 2 + 18], { scaleFrom: 0.4, duration: 500 + i * 80 });
+        });
+      }
+      if (st.unfan) {
+        t.fan.forEach(n => n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'forwards' }));
+        await sleep(420);
+        t.fan.forEach(n => n.remove());
+        t.fan = [];
+      }
+      if (st.play) {
+        const [seat, card, tag] = st.play;
+        const node = cardNode(card, tag);
+        felt.appendChild(node);
+        t.trick.push({ node, card, seat });
+        await fly(node, seatPos(seat), slotPos(seat), { scaleFrom: 0.45 });
+      }
+      if (st.splash) {
+        const node = felt.appendChild(Object.assign(document.createElement('div'), { className: 'scene-splash', textContent: st.splash }));
+        node.animate([
+          { transform: 'translate(-50%, -50%) scale(0.2)', opacity: 0 },
+          { transform: 'translate(-50%, -50%) scale(1.25)', opacity: 1, offset: 0.25 },
+          { transform: 'translate(-50%, -50%) scale(1)', opacity: 1, offset: 0.8 },
+          { transform: 'translate(-50%, -50%) scale(1.05)', opacity: 0 },
+        ], { duration: reducedMotion ? 0 : 1500, fill: 'forwards' });
+        setTimeout(() => node.remove(), 1550);
+      }
+      if (st.sweep) {
+        const toWaste = st.sweep === 'waste';
+        const target = toWaste ? wastePos() : pilePos();
+        const last = t.trick.at(-1)?.card;
+        await Promise.all(t.trick.map(({ node, seat }, i) => {
+          if (toWaste) setTimeout(() => { node.querySelector('img').src = '/cards/back.svg'; }, 250 + i * 60);
+          return fly(node, slotPos(seat), target, { duration: 650 + i * 60, scaleTo: 0.8, fadeOut: true });
+        }));
+        t.trick.forEach(({ node }) => node.remove());
+        t.trick = [];
+        if (toWaste) t.waste.hidden = false;
+        else setPile(t, t.pileCount + 1, last);
+      }
+      if (st.pickup !== undefined) {
+        const chip = t.seats[st.pickup];
+        await Promise.all(t.trick.map(({ node, seat }, i) =>
+          sleep(i * 120).then(() => fly(node, slotPos(seat), seatPos(st.pickup), { duration: 700, scaleTo: 0.3, fadeOut: true }))));
+        t.trick.forEach(({ node }) => node.remove());
+        t.trick = [];
+        t.seats.forEach(c => c.classList.remove('glow'));
+        chip.classList.add('hit');
+      }
+      if (st.collect) {
+        const ghost = cardNode(null);
+        felt.appendChild(ghost);
+        const from = pilePos();
+        setPile(t, 0);
+        await fly(ghost, from, seatPos(st.collect[0]), { duration: 800, scaleTo: 0.4, fadeOut: true });
+        ghost.remove();
+        t.seats.forEach(c => c.classList.remove('glow'));
+        st.collect.forEach(i => t.seats[i].classList.add('win'));
+      }
+      await sleep(reducedMotion ? 0 : st.wait ?? 1000);
+    }
+
+    async function play() {
+      const mine = ++run;
+      running = true;
+      do {
+        const t = reset();
+        for (const st of steps) {
+          if (mine !== run) return;
+          await step(t, st);
+        }
+        if (reducedMotion) break;
+        await sleep(2200);
+      } while (mine === run && visible);
+      if (mine === run) running = false;
+    }
+
+    replay.onclick = () => { play(); };
+
+    // Loop only while on screen (hidden tabs never intersect).
+    new IntersectionObserver(entries => {
+      visible = entries[0].isIntersecting;
+      if (visible && !running && !reducedMotion) play();
+    }, { threshold: 0.35 }).observe(fig);
+
+    if (reducedMotion) play(); // shows each scene's end state; Replay steps through
+  }
+
+  document.querySelectorAll('figure.scene').forEach(mountScene);
+</script>
+</body>
+</html>

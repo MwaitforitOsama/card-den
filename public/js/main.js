@@ -108,6 +108,7 @@ let selectedGame = 'thulla';
 for (const tab of document.querySelectorAll('#game-picker .game-tab')) {
   tab.onclick = () => {
     selectedGame = tab.dataset.game;
+    $('#home-help').href = `/how-to-play.html#${selectedGame}`;
     document.querySelectorAll('#game-picker .game-tab')
       .forEach(t => t.classList.toggle('active', t === tab));
   };
