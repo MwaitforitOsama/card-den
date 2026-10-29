@@ -414,6 +414,18 @@ input:focus { border-color: var(--gold); }
 
 /* ---------- voice ---------- */
 
+/* Round icon buttons: drop the global button padding so the emoji sits dead
+   centre instead of being pushed right/down out of the circle. */
+#btn-talk,
+#btn-voice {
+  padding: 0;
+  display: grid;
+  place-items: center;
+  line-height: 1;
+}
+#btn-talk[hidden],
+#btn-voice[hidden] { display: none; }
+
 #btn-talk {
   position: fixed;
   right: 16px;
@@ -436,6 +448,26 @@ input:focus { border-color: var(--gold); }
   transform: scale(1.08);
 }
 #btn-talk:disabled { opacity: 0.5; }
+
+/* Voice is opt-in: this toggle joins/leaves the mesh. */
+#btn-voice {
+  position: fixed;
+  right: 26px;
+  bottom: calc(var(--card-h) + 140px);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  background: rgba(0, 0, 0, 0.55);
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  opacity: 0.75;
+  z-index: 15;
+}
+#btn-voice.on {
+  opacity: 1;
+  background: #1d4ed8;
+  border-color: #60a5fa;
+}
 
 .player-chip.speaking {
   border-color: #4ade80;

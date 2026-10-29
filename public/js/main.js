@@ -70,6 +70,7 @@ const socket = createSocket({
       // can prove this is the same person and reclaim the seat.
       session = { code: msg.code, token: msg.token, name: store.loadName() };
       store.saveSession(session);
+      voice.rejoined();
       setInviteUrl(msg.code);
       $('#conn-status').textContent = '';
       $('#screen-home').hidden = true;

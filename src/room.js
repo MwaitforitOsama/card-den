@@ -144,6 +144,7 @@ export class GameRoom {
     if (msg.type === 'chat') return await this.handleChat(seat, spectator, msg);
     if (msg.type === 'rtc') return this.handleRtc(token, msg);
     if (msg.type === 'voice') return this.handleVoice(token, msg);
+    if (msg.type === 'voice_join') return await this.handleVoiceJoin(token, msg);
     if (seat < 0) return this.sendError(ws, 'You are watching — you can play from the next game');
     if (msg.type === 'start') return await this.handleStart(ws, token);
     if (msg.type === 'set_game') return await this.handleSetGame(ws, token, msg);
@@ -266,6 +267,9 @@ export class GameRoom {
     if (!token || !this.room) return;
     const stillConnected = this.connectedTokens(ws).has(token);
     if (!stillConnected) {
+      // Voice is opt-in per connection: a returning tab asks to rejoin.
+      const who = this.personByToken(token);
+      if (who) who.inVoice = false;
       if (this.seatOf(token) < 0) {
         // A spectator who leaves is simply removed — the game never waits
         // for watchers.
@@ -633,9 +637,9 @@ export class GameRoom {
   // server — these are only the handshake messages that set up the P2P link.
   handleRtc(token, msg) {
     const me = this.personByToken(token);
-    if (!me?.peerId || !msg.to || msg.to === me.peerId) return;
+    if (!me?.peerId || !me.inVoice || !msg.to || msg.to === me.peerId) return;
     const target = this.personByPeerId(msg.to);
-    if (!target) return;
+    if (!target?.inVoice) return;
     for (const ws of this.ctx.getWebSockets()) {
       if (this.tokenOf(ws) === target.token) {
         this.send(ws, { type: 'rtc', from: me.peerId, data: msg.data });
@@ -646,10 +650,25 @@ export class GameRoom {
   // Transient push-to-talk indicator, fanned out to everyone.
   handleVoice(token, msg) {
     const me = this.personByToken(token);
-    if (!me?.peerId) return;
+    if (!me?.peerId || (!me.inVoice && msg.speaking)) return;
     this.forEachClient(ws => this.send(ws, {
       type: 'voice', peerId: me.peerId, speaking: !!msg.speaking,
     }));
+  }
+
+  // Opt in/out of the voice mesh. Only members are meshed, so people who
+  // never tap "Join voice" cost nobody any connections.
+  async handleVoiceJoin(token, msg) {
+    const me = this.personByToken(token);
+    if (!me?.peerId) return;
+    const on = !!msg.on;
+    if (!!me.inVoice === on) return;
+    me.inVoice = on;
+    await this.save();
+    if (!on) {
+      this.forEachClient(ws => this.send(ws, { type: 'voice', peerId: me.peerId, speaking: false }));
+    }
+    this.broadcast();
   }
 
   /* ---------- chat ---------- */
@@ -691,7 +710,7 @@ export class GameRoom {
       pendingTake: room.pendingTake ?? null,
       pendingConcede: room.pendingConcede ?? null,
       gamesPlayed: room.gamesPlayed ?? 0,
-      spectators: (room.spectators ?? []).map(s => ({ name: s.name, peerId: s.peerId ?? null })),
+      spectators: (room.spectators ?? []).map(s => ({ name: s.name, peerId: s.peerId ?? null, inVoice: !!s.inVoice })),
       grace: room.graceDeadline != null ? {
         remainingMs: Math.max(0, room.graceDeadline - Date.now()),
         waitingFor: this.disconnectedActive(connected).map(p => p.name),
@@ -701,6 +720,7 @@ export class GameRoom {
         seat: i,
         name: p.name,
         peerId: p.peerId ?? null,
+        inVoice: !!p.inVoice,
         connected: p.isBot || connected.has(p.token),
         isBot: !!p.isBot,
         isHost: i === hostSeat,

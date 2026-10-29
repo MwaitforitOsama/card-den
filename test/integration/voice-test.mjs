@@ -1,5 +1,6 @@
-// Voice signaling test: peerIds are public in state, 'rtc' payloads relay
-// only to the addressed peer, and 'voice' speaking flags fan out to all.
+// Voice signaling test: peerIds are public in state, voice is opt-in
+// ('voice_join'), 'rtc' payloads relay only between voice members to the
+// addressed peer, and 'voice' speaking flags fan out to all.
 const PORT = process.env.PORT ?? 8787;
 const BASE = `http://localhost:${PORT}`;
 const errors = [];
@@ -34,6 +35,25 @@ for (const cl of clients) {
   if (cl.state.players.some(p => !p.peerId)) errors.push(`${cl.name} sees players without peerId`);
 }
 
+// Nobody is in voice until they opt in — relays go nowhere.
+if (clients.some(cl => cl.state.players.some(p => p.inVoice))) errors.push('someone in voice before joining');
+a.ws.send(JSON.stringify({ type: 'rtc', to: ids.B, data: { kind: 'ice' } }));
+await sleep(300);
+if (b.rtc.length !== 0) errors.push('rtc relayed before either side joined voice');
+
+a.ws.send(JSON.stringify({ type: 'voice_join', on: true }));
+b.ws.send(JSON.stringify({ type: 'voice_join', on: true }));
+await sleep(400);
+const inVoice = cl => cl.state.players.filter(p => p.inVoice).map(p => p.name).sort().join();
+for (const cl of clients) {
+  if (inVoice(cl) !== 'A,B') errors.push(`${cl.name} sees in voice: ${inVoice(cl)}, expected A,B`);
+}
+
+// C never joined voice: relays to them are dropped.
+a.ws.send(JSON.stringify({ type: 'rtc', to: ids.C, data: { kind: 'ice' } }));
+await sleep(300);
+if (c.rtc.length !== 0) errors.push('rtc relayed to a peer not in voice');
+
 // Targeted relay: only the addressee receives it, stamped with the sender.
 a.ws.send(JSON.stringify({ type: 'rtc', to: ids.B, data: { kind: 'sdp', sdp: { type: 'offer', fake: true } } }));
 await sleep(400);
@@ -57,10 +77,16 @@ for (const cl of clients) {
   if (got.length !== 1) errors.push(`${cl.name} got ${got.length} speaking flags, expected 1`);
 }
 
+// Leaving voice clears membership and the speaking flag.
+b.ws.send(JSON.stringify({ type: 'voice_join', on: false }));
+await sleep(400);
+if (inVoice(a) !== 'A') errors.push(`after B left, A sees in voice: ${inVoice(a)}`);
+if (!a.voice.some(v => v.peerId === ids.B && v.speaking === false)) errors.push('leaving voice did not clear speaking');
+
 // The room is still healthy after relay traffic.
 if (!clients.every(cl => cl.state.players.length === 3)) errors.push('roster corrupted');
 
 clients.forEach(cl => { try { cl.ws.close(); } catch {} });
 if (errors.length) { console.log('ERRORS:', errors); process.exit(1); }
-console.log('VOICE SIGNALING TEST PASSED: peerIds public, relay targeted, speaking fans out');
+console.log('VOICE SIGNALING TEST PASSED: peerIds public, voice opt-in, relay targeted to members, speaking fans out');
 process.exit(0);
