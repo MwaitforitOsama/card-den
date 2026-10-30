@@ -4,7 +4,7 @@
 
 import {
   createGame, playCard, undoPlay, takeHand, legalMoves, canTake,
-  canConcede, concede, sortHand,
+  canConcede, concede, sortHand, sarreinPick,
 } from './engine.js';
 
 export const thulla = {
@@ -12,10 +12,17 @@ export const thulla = {
   title: 'Thulla',
   minPlayers: 3,
 
+  // Optional house rules the host may toggle between games (the room's
+  // set_rule handler); stored on room.rules.thulla and threaded into
+  // createGame below.
+  settings: {
+    sarrein: { default: false },
+  },
+
   // Deals a fresh game and auto-throws the forced A♠ opening for its
   // holder; returns the full event list for the new deal.
   start(room) {
-    room.game = createGame(room.players.length);
+    room.game = createGame(room.players.length, Math.random, room.rules?.thulla ?? {});
     const events = [{ type: 'started', leader: room.game.leader }];
     events.push(...playCard(room.game, room.game.leader, 'AS'));
     room.game.lastPlay = null; // a forced play gets no undo window
@@ -69,6 +76,16 @@ export const thulla = {
       legal: seat >= 0 ? legalMoves(game, seat) : [],
       takeTarget: seat >= 0 ? canTake(game, seat) : null,
       youCanConcede: seat >= 0 && (canConcede(game, seat) ?? -1) >= 0,
+      sarreinRule: !!game.rules?.sarrein,
+      // Only how many cards lie face down — never which, nor their order.
+      sarrein: game.sarrein ? {
+        picker: game.sarrein.picker,
+        holder: game.sarrein.holder,
+        slots: game.sarrein.order?.length ?? 0,
+      } : null,
+      youPick: !!game.sarrein && game.sarrein.picker === seat && game.turn === seat
+        && game.trick.length === 0,
+      sarreinResult: game.sarreinResult ?? null,
     };
   },
 
@@ -76,6 +93,11 @@ export const thulla = {
   // R is the GameRoom instance; each handler validates and either replies
   // with an error or saves + broadcasts.
   actions: {
+    // Sarrein: the picker blind-picks one of the holder's face-down cards.
+    async sarrein_pick(R, ws, seat, msg) {
+      await R.handleMove(ws, () => sarreinPick(R.room.game, seat, msg.slot));
+    },
+
     // Taking another player's hand needs their approval: 'take' only files
     // a request; the transfer happens when the target approves.
     async take(R, ws, seat) {

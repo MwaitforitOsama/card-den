@@ -166,7 +166,7 @@ export function createGameView({ send }) {
     // game-owned element hides first; the view re-shows its own.
     for (const id of ['#waste', '#btn-take', '#btn-concede', '#take-prompt',
       '#concede-prompt', '#rung-info', '#call-prompt', '#claim-prompt', '#rung-pile',
-      '#rule-ace', '#rule-two-aces', '#rule-rung-win', '#btn-add-bot']) {
+      '#rule-ace', '#rule-two-aces', '#rule-rung-win', '#rule-sarrein', '#sarrein', '#btn-add-bot']) {
       $(id).hidden = true;
     }
     if (g && state.phase !== 'lobby') renderTrickCards(state, view.visibleTrick?.(state) ?? g.trick);

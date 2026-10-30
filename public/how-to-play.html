@@ -5,10 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>How to play — Taash Adda</title>
 <meta name="description" content="How to play Bhabhi Thulla and Rung (Court Piece) on Taash Adda — rules, house-rule switches and buttons explained for new players.">
+<!-- The app is designed dark and always shows its own colours: this tells
+     phone browsers (Samsung Internet, Chrome "force dark") not to recolour it,
+     and keeps the phone's light/dark setting from changing anything. -->
+<meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#14532d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎴</text></svg>">
 <style>
   :root {
+    color-scheme: dark; /* already dark: browsers must not force-darken it */
     --felt-1: #14532d;
     --felt-2: #052e16;
     --gold: #eab308;
@@ -180,8 +185,12 @@
   }
   .scene-seat.glow { border-color: var(--gold); box-shadow: 0 0 16px rgba(234, 179, 8, 0.9); }
   .scene-seat.hit { border-color: #ef4444; background: #7f1d1d; box-shadow: 0 0 18px rgba(239, 68, 68, 0.9); }
+  .scene-seat.out { opacity: 0.35; }
+  .scene-row { position: absolute; display: flex; gap: 4px; transform: translate(-50%, -50%); }
+  .scene-row .scene-card { position: relative; margin: 0; width: 32px; height: 45px; }
   .scene-seat.win { border-color: #4ade80; background: #14532d; box-shadow: 0 0 18px rgba(74, 222, 128, 0.9); }
   .scene-card {
+    color-scheme: only light; /* real-card colours, never force-recoloured */
     position: absolute;
     width: 44px;
     height: 62px;
@@ -284,6 +293,7 @@
       <li><a href="#t-take">Switch: Ask to take cards</a></li>
       <li><a href="#t-concede">Switch: Concede</a></li>
       <li><a href="#t-undo">Switch: Change card (undo)</a></li>
+      <li><a href="#t-sarrein">House rule: Sarrein ⚔️</a></li>
       <li><a href="#t-example">A worked example</a></li>
       <li><a href="#t-tips">Tips for new players</a></li>
       <li><a href="#t-words">Words you'll hear</a></li>
@@ -375,6 +385,7 @@
     <li>The other player sees <em>Accept the win</em> / <em>Keep playing</em>.</li>
     <li>If they accept, the game ends at once: the player who conceded is the Bhabhi ("game parr gayi").</li>
     <li>If they decline, play continues and the offer can be made again. Playing a card cancels a pending offer.</li>
+    <li>Not available once <a href="#t-sarrein">Sarrein</a> has started.</li>
   </ul>
 
   <h2 id="t-undo">9. Switch: Change card (undo) ↩</h2>
@@ -384,7 +395,49 @@
     <li>The automatic A♠ opening can't be undone.</li>
   </ul>
 
-  <h2 id="t-example">10. A worked example</h2>
+  <h2 id="t-sarrein">10. House rule: Sarrein ⚔️</h2>
+  <p>An optional ending duel for the last two players. Before a game and on the game-over screen everyone sees a
+    <code>⚔️ Sarrein: OFF</code> button. <strong>Only the host can flip it</strong>, only between games, and the room
+    remembers the setting. It is <strong>OFF by default</strong>.</p>
+
+  <div class="switch">
+    <h3>When Sarrein starts <span class="badge">default OFF</span></h3>
+    <p>Only two players still have cards. Call them <strong>A</strong> and <strong>B</strong>. B's
+      <strong>last card wins a clean trick</strong> (everyone followed suit) while A still holds cards. It doesn't
+      matter who led that trick.</p>
+    <p>Normally B would be safe and A the Bhabhi. With Sarrein ON, <strong>B is not safe yet</strong>, and the duel begins.</p>
+    <p>These stay the same as always:</p>
+    <ul>
+      <li>A's card wins that trick (for example A plays the K♣ over B's 10♣): <strong>A is the Bhabhi</strong>.</li>
+      <li>Both hands run out on the same trick: a <strong>draw</strong>.</li>
+      <li>B's last card is a thulla: A picks up and <strong>A is the Bhabhi</strong>.</li>
+    </ul>
+  </div>
+
+  <div class="switch">
+    <h3>Each round of the duel</h3>
+    <ol>
+      <li>A's cards are <strong>shuffled and laid face down</strong> for everyone to see. Nobody knows which is which, not even A.</li>
+      <li><strong>B taps one.</strong> It leaves A's hand and lands face up as <strong>B's lead</strong>. It can't be taken back.</li>
+      <li><strong>A answers</strong> from his own hand. He must follow suit if he can, and he chooses which card.</li>
+    </ol>
+    <div class="table-wrap"><table>
+      <tr><th>A answers with…</th><th>Result</th></tr>
+      <tr><td>a <strong>higher</strong> card of that suit</td><td><strong>B wins</strong>, A is the Bhabhi (even if it was A's last card)</td></tr>
+      <tr><td>a <strong>lower</strong> card, and A still has cards</td><td>Clean trick: B picks blind again from a fresh shuffle</td></tr>
+      <tr><td>a <strong>lower</strong> card that was A's <strong>last</strong> card</td><td><strong>A wins</strong>, B is the Bhabhi</td></tr>
+      <tr><td><strong>no card</strong> of that suit (a thulla)</td><td>B would have to pick up, so <strong>A wins</strong>, B is the Bhabhi</td></tr>
+    </table></div>
+    <ul>
+      <li>If A has <strong>exactly 1 card</strong> when B is due to pick, <strong>A loses</strong>.</li>
+      <li>Nobody can <strong>concede</strong> during Sarrein.</li>
+    </ul>
+    <div class="callout tip"><p>💡 A: when you can, answer with a <strong>lower</strong> card than B's pick. Playing higher hands B the win.</p></div>
+  </div>
+
+  <figure class="scene" data-scene="thulla-sarrein"></figure>
+
+  <h2 id="t-example">11. A worked example</h2>
   <p>Four players: <strong>Ali, Bilal, Saad, Hamza</strong>. It's trick 5 and Ali leads.</p>
   <ol>
     <li>Ali leads <strong class="red">9♥</strong>.</li>
@@ -396,7 +449,7 @@
   <p>If Saad had a heart instead, say <strong class="red">3♥</strong>, and Hamza also followed, the trick would be clean.
     It would go to the waste pile and Bilal (K♥) would lead next without picking anything up.</p>
 
-  <h2 id="t-tips">11. Tips for new players</h2>
+  <h2 id="t-tips">12. Tips for new players</h2>
   <ul>
     <li>Keep track of which suits each player has run out of, because they're the ones who can thulla.</li>
     <li>Get rid of high cards early, while everyone still has the suit and a thulla is less likely.</li>
@@ -404,13 +457,14 @@
     <li>Running out of a suit yourself is good: it means you can thulla someone else.</li>
   </ul>
 
-  <h2 id="t-words">12. Words you'll hear</h2>
+  <h2 id="t-words">13. Words you'll hear</h2>
   <div class="table-wrap"><table>
     <tr><th>Word</th><th>Meaning</th></tr>
     <tr><td><strong>Thulla</strong></td><td>An off-suit card that ends the trick and makes the highest led-suit card pick up.</td></tr>
     <tr><td><strong>Bhabhi</strong></td><td>The loser: the last player still holding cards.</td></tr>
     <tr><td><strong>Bahar / Safe</strong></td><td>Out of the game with an empty hand.</td></tr>
     <tr><td><strong>Waste pile</strong></td><td>Where clean tricks go. Those cards are gone for good.</td></tr>
+    <tr><td><strong>Sarrein</strong> ⚔️</td><td>Optional duel: the player whose last card won a clean trick blind-picks from the other player's face-down cards.</td></tr>
     <tr><td><strong>Game parr gayi</strong></td><td>Someone conceded. The game is over and they lost.</td></tr>
   </table></div>
 </article>
@@ -664,7 +718,8 @@
     <tr><td><strong>Start game / Play again</strong></td><td>Deals a new game once enough players are seated (Thulla 3+, Rung 4).</td></tr>
     <tr><td><strong>⇄ Switch to …</strong></td><td>Changes the room between Thulla and Rung between games. Same code, chat and voice.</td></tr>
     <tr><td><strong>Tap two players</strong> (Rung)</td><td>Swaps their seats to arrange teams.</td></tr>
-    <tr><td><strong>Rule toggles</strong> (Rung)</td><td>Turn the house-rule switches on or off. See <a href="#r-switches">Rung switches</a>.</td></tr>
+    <tr><td><strong>Rule toggles</strong></td><td>Turn the house rules on or off between games: <a href="#t-sarrein">Sarrein</a> in Thulla,
+      and the three <a href="#r-switches">Rung switches</a>.</td></tr>
     <tr><td id="room-bot"><strong>🤖 Add a bot</strong> (Rung)</td><td>Seats <strong>Botta</strong>, a simple bot that follows the rules
       and plays a random legal card after a ~3-second pause. It never claims the rung call. Remove it with the ✕ on its chip.
       Removing it mid-game cancels that deal.</td></tr>
@@ -741,6 +796,19 @@
       { say: 'Saad has <b>no hearts</b> left and throws the 4♣…', play: [2, '4C'], wait: 900 },
       { splash: '💥 THULLA!', say: 'Thulla! The trick ends right here. Hamza does not play.', wait: 1600 },
       { say: 'Bilal played the highest heart, so <b>Bilal picks up all 3 cards</b> and leads next.', pickup: 1, wait: 2200 },
+    ],
+    'thulla-sarrein': [
+      { out: [1, 3], say: 'Sarrein is ON. Only <b>Ali</b> and <b>Saad</b> are left, and Ali has one card: the 10♣.', wait: 1800 },
+      { say: 'Saad leads the 5♣.', play: [2, '5C'] },
+      { say: 'Ali answers with his <b>last card</b>, the 10♣, and it wins the trick.', play: [0, 'TC'], wait: 1400 },
+      { splash: '⚔️ SARREIN!', say: 'Ali is out of cards, but <b>not safe yet</b>: Sarrein!', wait: 1600 },
+      { sweep: 'waste', facedown: 4, say: "Saad's 4 cards are shuffled <b>face down</b>. Ali must pick one blind.", wait: 1600 },
+      { pick: '8D', say: 'Ali taps one: the 8♦. It becomes <b>his lead</b>.', wait: 1400 },
+      { play: [2, '3D'], say: 'Saad plays <b>lower</b>, the 3♦. Clean trick, so Ali picks again.', wait: 1600 },
+      { sweep: 'waste', facedown: 2, say: 'Two face-down cards left, freshly shuffled.', wait: 1300 },
+      { pick: '6S', say: 'Ali picks the 6♠.', wait: 1200 },
+      { play: [2, '4H'], say: 'Saad has no spades and throws the 4♥: a <b>thulla</b>!', wait: 1200 },
+      { pickup: 0, say: 'Ali has to pick up, so <b>Saad wins Sarrein</b>. Ali is the Bhabhi.', wait: 2400 },
     ],
     'rung-call': [
       { say: '<b>Ali</b> is the caller and gets his first 5 cards.', glow: 0, fan: [0, ['AH', 'KH', '9H', '4C', '7S']], wait: 1600 },
@@ -864,7 +932,7 @@
       place(pile, pilePos());
       felt.append(waste, pile);
       say.innerHTML = '';
-      return { seats, waste, pile, pileLabel, pileCount: 0, trick: [], fan: [], badge: null };
+      return { seats, waste, pile, pileLabel, pileCount: 0, trick: [], fan: [], badge: null, row: null };
     }
 
     function setPile(t, n, topCard) {
@@ -902,6 +970,30 @@
           const off = (i - (cards.length - 1) / 2) * 30;
           fly(node, [sx, sy], [W() / 2 + off, H() / 2 + 18], { scaleFrom: 0.4, duration: 500 + i * 80 });
         });
+      }
+      if (st.out) st.out.forEach(i => t.seats[i].classList.add('out'));
+      if (st.facedown !== undefined) {
+        t.row?.remove();
+        t.row = document.createElement('div');
+        t.row.className = 'scene-row';
+        for (let i = 0; i < st.facedown; i++) t.row.appendChild(cardNode(null));
+        place(t.row, [W() / 2, 58]);
+        felt.appendChild(t.row);
+        t.row.animate([{ opacity: 0 }, { opacity: 1 }], { duration: reducedMotion ? 0 : 400 });
+      }
+      if (st.pick) {
+        // A blind pick: one face-down card leaves the row, flips, and lands
+        // as Ali's (seat 0) lead.
+        const back = t.row.children[Math.floor(t.row.children.length / 2)];
+        const r = back.getBoundingClientRect();
+        const f = felt.getBoundingClientRect();
+        const from = [r.left - f.left + r.width / 2, r.top - f.top + r.height / 2];
+        back.style.visibility = 'hidden';
+        const node = cardNode(st.pick, 'blind pick');
+        felt.appendChild(node);
+        t.trick.push({ node, card: st.pick, seat: 0 });
+        await fly(node, from, slotPos(0), { scaleFrom: 0.7 });
+        back.remove();
       }
       if (st.unfan) {
         t.fan.forEach(n => n.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 400, fill: 'forwards' }));

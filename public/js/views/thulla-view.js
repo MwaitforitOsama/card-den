@@ -7,7 +7,7 @@ import { cardEl, SUIT_SYM } from '../cards.js';
 import { toast } from '../toast.js';
 import {
   playerName, prettyCard, makeFlyingCard, deltaToCenter, flyToTarget,
-  chipRect, splash,
+  chipRect, splash, renderRuleToggle,
 } from './table-common.js';
 
 const WASTE_STACK_MAX = 14;
@@ -122,6 +122,10 @@ export function createThullaView({ send, rerender }) {
       return 'has the A♠ ♠️';
     }
     if (!p.connected) chip.classList.add('offline');
+    if (g?.sarrein && p.seat === g.sarrein.picker) {
+      chip.classList.add('sarrein-picker');
+      return '⚔️ Sarrein';
+    }
     if (p.safe) chip.classList.add('safe');
     if (g && state.phase === 'over' && g.bhabhi === p.seat) chip.classList.add('bhabhi');
     if (state.phase === 'lobby') return p.connected ? 'ready' : 'away';
@@ -140,6 +144,13 @@ export function createThullaView({ send, rerender }) {
     const g = state.game;
     if (!g || g.phase !== 'playing') return '';
     if (opening) return `Sarr 1 — ${playerName(state, opening.seat)} has the A♠ and throws it…`;
+    if (g.sarrein) {
+      const picker = playerName(state, g.sarrein.picker);
+      const holder = playerName(state, g.sarrein.holder);
+      return g.trick.length === 0
+        ? `⚔️ Sarrein — ${picker} picks one of ${holder.replace(' (you)', '')}’s cards`
+        : `⚔️ Sarrein — ${holder} must answer ${SUIT_SYM[g.ledSuit]}`;
+    }
     const turnName = playerName(state, g.turn);
     const nextName = next !== null ? ` · ${playerName(state, next).replace(' (you)', '')} next` : '';
     if (g.trick.length === 0) {
@@ -148,6 +159,33 @@ export function createThullaView({ send, rerender }) {
         : `Sarr ${g.trickNumber} — ${turnName} leads${nextName}`;
     }
     return `Sarr ${g.trickNumber} — ${SUIT_SYM[g.ledSuit]} led · ${turnName} to play${nextName}`;
+  }
+
+  /* ---------- Sarrein: the holder's cards, face down ---------- */
+
+  // Everyone sees how many cards the holder has left, face down; only the
+  // picker can tap one. The server shuffles them every round and never
+  // tells anyone which slot is which.
+  function renderSarreinSlots(state) {
+    const g = state.game;
+    const box = $('#sarrein');
+    if (!g?.sarrein || g.trick.length !== 0 || !g.sarrein.slots) return;
+    box.hidden = false;
+    const plain = seat => playerName(state, seat).replace(' (you)', '');
+    const { picker, holder } = g.sarrein;
+    $('#sarrein-label').textContent =
+      g.youPick ? `Pick one of ${plain(holder)}’s cards — it becomes your lead`
+        : holder === state.youSeat ? `${plain(picker)} is picking one of your cards…`
+          : `${plain(picker)} is picking one of ${plain(holder)}’s cards…`;
+    const row = $('#sarrein-slots');
+    row.innerHTML = '';
+    for (let slot = 0; slot < g.sarrein.slots; slot++) {
+      const node = el('button', 'sarrein-slot');
+      node.appendChild(cardEl('', { mini: true, faceDown: true }));
+      node.disabled = !g.youPick;
+      if (g.youPick) node.onclick = () => send({ type: 'sarrein_pick', slot });
+      row.appendChild(node);
+    }
   }
 
   /* ---------- waste pile ---------- */
@@ -174,6 +212,10 @@ export function createThullaView({ send, rerender }) {
 
   function renderCenter(state) {
     const g = state.game;
+    if (state.phase === 'lobby' || state.phase === 'over') {
+      renderRuleToggle(state, send, '#rule-sarrein', 'sarrein', '⚔️ Sarrein', false);
+    }
+    renderSarreinSlots(state);
     if (g && state.phase !== 'lobby') {
       const handTotal = state.players.reduce((sum, p) => sum + p.cardCount, 0);
       renderWaste(52 - handTotal - g.trick.length);
@@ -228,9 +270,23 @@ export function createThullaView({ send, rerender }) {
 
   function overlayHTML(state) {
     const g = state.game;
+    const why = g.sarreinResult ? `<br><small>⚔️ ${sarreinReason(state, g.sarreinResult)}</small>` : '';
     return g.bhabhi !== null
-      ? `😆 <b>${escapeHtml(playerName(state, g.bhabhi))}</b> di <b>game parr gayi!</b>`
+      ? `😆 <b>${escapeHtml(playerName(state, g.bhabhi))}</b> di <b>game parr gayi!</b>${why}`
       : `🤝 It’s a draw — everyone Safely Bahar!`;
+  }
+
+  // One line on how Sarrein was decided (escaped HTML).
+  function sarreinReason(state, { winner, loser, reason }) {
+    const w = `<b>${escapeHtml(playerName(state, winner))}</b>`;
+    const l = `<b>${escapeHtml(playerName(state, loser))}</b>`;
+    switch (reason) {
+      case 'one_card': return `${l} was down to one card in Sarrein — ${w} wins`;
+      case 'higher': return `${l} had to answer higher than the pick — ${w} wins Sarrein`;
+      case 'last_card': return `${w} answered lower with the last card — wins Sarrein`;
+      case 'thulla': return `${w}’s thulla makes ${l} pick up — ${w} wins Sarrein`;
+      default: return `${w} wins Sarrein`;
+    }
   }
 
   /* ---------- animations ---------- */
@@ -280,12 +336,30 @@ export function createThullaView({ send, rerender }) {
 
   function announce(state, ev) {
     const name = seat => escapeHtml(playerName(state, seat));
+    const whose = seat => (seat === state.youSeat ? 'your' : `${name(seat)}’s`);
     switch (ev.type) {
       case 'started':
         toast('🃏 Cards dealt!');
         return true;
       case 'thulla':
         toast(`💥 THULLA! ${name(ev.winner)} picks up ${ev.cards.length} cards`, 'thulla');
+        return true;
+      case 'sarrein_started':
+        splash('⚔️ SARREIN!');
+        toast(`⚔️ Sarrein! ${name(ev.picker)} is out of cards — picks blind from ${whose(ev.holder)} hand`, 'thulla');
+        return true;
+      case 'played':
+        if (!ev.blind) return false;
+        toast(`🎴 ${name(ev.seat)} picked the ${prettyCard(ev.card)} from ${whose(ev.from)} cards`);
+        return true;
+      case 'sarrein_result':
+        toast(`⚔️ ${sarreinReason(state, ev)}`, 'thulla');
+        return true;
+      case 'rule_changed':
+        if (ev.rule !== 'sarrein') return false;
+        toast(ev.value
+          ? '⚔️ Sarrein ON — a last card that wins the sarr leads to a blind-pick duel'
+          : '⚔️ Sarrein OFF — a last card that wins the sarr is simply Safely Bahar');
         return true;
       case 'trick_won':
         toast(`${name(ev.seat)} takes the sarr`);

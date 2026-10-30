@@ -8,6 +8,10 @@
 <meta property="og:title" content="Taash Adda — Card Den">
 <meta property="og:description" content="Thulla and Rung with the boys — join the room and play.">
 <meta property="og:type" content="website">
+<!-- The app is designed dark and always shows its own colours: this tells
+     phone browsers (Samsung Internet, Chrome "force dark") not to recolour it,
+     and keeps the phone's light/dark setting from changing anything. -->
+<meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#14532d">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎴</text></svg>">
 <link rel="stylesheet" href="/style.css">
@@ -72,6 +76,11 @@
       <button id="rule-ace" class="rule-toggle" hidden></button>
       <button id="rule-two-aces" class="rule-toggle" hidden></button>
       <button id="rule-rung-win" class="rule-toggle" hidden></button>
+      <button id="rule-sarrein" class="rule-toggle" hidden></button>
+    </div>
+    <div id="sarrein" hidden>
+      <div id="sarrein-label"></div>
+      <div id="sarrein-slots"></div>
     </div>
     <div id="claim-prompt" hidden>
       <span id="claim-prompt-text"></span>

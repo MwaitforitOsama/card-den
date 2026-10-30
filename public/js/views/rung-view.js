@@ -5,7 +5,9 @@
 import { $, el, escapeHtml } from '../dom.js';
 import { cardEl, SUIT_SYM } from '../cards.js';
 import { toast } from '../toast.js';
-import { playerName, prettyCard, renderTrickCards, flyToTarget, chipRect, splash } from './table-common.js';
+import {
+  playerName, prettyCard, renderTrickCards, flyToTarget, chipRect, splash, renderRuleToggle,
+} from './table-common.js';
 
 export function createRungView({ send }) {
   // While a resolved sar is still displayed in the trick area (awaiting its
@@ -178,9 +180,9 @@ export function createRungView({ send }) {
     // what they're playing; only the host can flip them.
     if (state.phase === 'lobby' || state.phase === 'over') {
       const isHost = !!state.players.find(p => p.seat === state.youSeat)?.isHost;
-      renderRuleToggle(state, isHost, '#rule-ace', 'aceCannotPick', "🂡 Ace can't win the sar");
-      renderRuleToggle(state, isHost, '#rule-two-aces', 'secondAceIsTwo', '🂡🂡 2nd Ace in a row = 2');
-      renderRuleToggle(state, isHost, '#rule-rung-win', 'rungCannotWin', '🎺 Cannot win sar with Rung');
+      renderRuleToggle(state, send, '#rule-ace', 'aceCannotPick', "🂡 Ace can't win the sar", true);
+      renderRuleToggle(state, send, '#rule-two-aces', 'secondAceIsTwo', '🂡🂡 2nd Ace in a row = 2', true);
+      renderRuleToggle(state, send, '#rule-rung-win', 'rungCannotWin', '🎺 Cannot win sar with Rung', true);
       // Short a 4th? The host can seat the bot (one max).
       if (isHost && !state.players.some(p => p.isBot)) {
         const addBot = $('#btn-add-bot');
@@ -208,17 +210,6 @@ export function createRungView({ send }) {
         && (g.phase === 'choosing' || g.phase === 'calling')) {
       renderTrickCards(state, g.toss[g.toss.length - 1]);
     }
-  }
-
-  function renderRuleToggle(state, isHost, id, rule, label) {
-    const on = state.gameRules?.[rule] ?? true;
-    const toggle = $(id);
-    toggle.hidden = false;
-    toggle.textContent = `${label}: ${on ? 'ON' : 'OFF'}`;
-    toggle.classList.toggle('off', !on);
-    toggle.disabled = !isHost;
-    toggle.title = isHost ? 'Tap to flip for the next game' : 'Only the host can change this';
-    toggle.onclick = () => send({ type: 'set_rule', rule, value: !on });
   }
 
   function overlayHTML(state) {

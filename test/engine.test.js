@@ -2,8 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   createGame, playCard, takeHand, legalMoves, canTake, makeDeck, undoPlay,
-  canConcede, concede,
+  canConcede, concede, sarreinPick,
 } from '../src/games/thulla/engine.js';
+import { thulla as thullaAdapter } from '../src/games/thulla/adapter.js';
 
 // Hand-craft a game state so each rule can be tested in isolation.
 function state(hands, opts = {}) {
@@ -20,6 +21,9 @@ function state(hands, opts = {}) {
     turn: opts.turn ?? 0,
     bhabhi: null,
     lastPlay: null,
+    rules: { sarrein: !!opts.sarrein },
+    sarrein: null,
+    sarreinResult: null,
   };
 }
 
@@ -316,4 +320,238 @@ test('full random games always terminate legally', () => {
       }
     }
   }
+});
+
+/* ---------- Sarrein (optional house rule) ---------- */
+
+// Two players left: seat 0 = A (holder), seat 1 = B (one card), seat 2 safe.
+function duel(aHand, bHand, { turn = 0, sarrein = true } = {}) {
+  return state([aHand, bHand, []], { turn, sarrein, safe: [false, false, true] });
+}
+
+// B blind-picks the given card (finds its face-down slot).
+function pickCard(g, card) {
+  const slot = g.sarrein.order.indexOf(card);
+  assert.ok(slot >= 0, `${card} is not face down`);
+  return sarreinPick(g, g.sarrein.picker, slot);
+}
+
+test('E1 sarrein: A leads lower club, B answers with last card 10♣ → Sarrein, B to pick', () => {
+  const g = duel(['5C', '9H', '3D', 'KS', '7S', '2H'], ['TC'], { turn: 0 });
+  playCard(g, 0, '5C');
+  const events = playCard(g, 1, 'TC');
+  assert.ok(events.some(e => e.type === 'sarrein_started' && e.picker === 1 && e.holder === 0));
+  assert.equal(g.phase, 'playing');
+  assert.equal(g.safe[1], false, 'B is not safe during Sarrein');
+  assert.equal(g.hands[0].length, 5);
+  assert.equal(g.turn, 1);
+  assert.equal(g.sarrein.order.length, 5);
+  assert.deepEqual([...g.sarrein.order].sort(), [...g.hands[0]].sort());
+});
+
+test('E2 sarrein: B leads 10♣, A follows lower → Sarrein too', () => {
+  const g = duel(['5C', '9H', '3D', 'KS', '7S', '2H'], ['TC'], { turn: 1 });
+  playCard(g, 1, 'TC');
+  const events = playCard(g, 0, '5C');
+  assert.ok(events.some(e => e.type === 'sarrein_started'));
+  assert.equal(g.turn, 1);
+});
+
+test('E3 sarrein: A plays higher club over B\'s last card → game over, A bhabhi (no Sarrein)', () => {
+  const g = duel(['KC', '9H', '3D'], ['TC'], { turn: 1 });
+  playCard(g, 1, 'TC');
+  const events = playCard(g, 0, 'KC');
+  assert.ok(!events.some(e => e.type === 'sarrein_started'));
+  assert.equal(g.phase, 'over');
+  assert.equal(g.bhabhi, 0);
+});
+
+test('E4 sarrein: B\'s last card is a thulla → normal pickup, A bhabhi', () => {
+  const g = duel(['9H', '5C', '3D'], ['TC'], { turn: 0 });
+  playCard(g, 0, '9H');
+  const events = playCard(g, 1, 'TC');
+  assert.ok(events.some(e => e.type === 'thulla' && e.winner === 0));
+  assert.ok(!events.some(e => e.type === 'sarrein_started'));
+  assert.equal(g.phase, 'over');
+  assert.equal(g.bhabhi, 0);
+});
+
+test('E5 sarrein OFF: same moves as E1 end the game as before', () => {
+  const g = duel(['5C', '9H', '3D', 'KS', '7S', '2H'], ['TC'], { turn: 0, sarrein: false });
+  playCard(g, 0, '5C');
+  const events = playCard(g, 1, 'TC');
+  assert.ok(!events.some(e => e.type === 'sarrein_started'));
+  assert.equal(g.phase, 'over');
+  assert.equal(g.bhabhi, 0);
+  assert.equal(g.safe[1], true);
+});
+
+test('E6 sarrein: A left with exactly 1 card when B is due to pick → A loses', () => {
+  const g = duel(['5C', '9H'], ['TC'], { turn: 0 });
+  playCard(g, 0, '5C');
+  const events = playCard(g, 1, 'TC');
+  assert.ok(events.some(e => e.type === 'sarrein_started'));
+  assert.ok(events.some(e => e.type === 'sarrein_result' && e.loser === 0 && e.reason === 'one_card'));
+  assert.equal(g.phase, 'over');
+  assert.equal(g.bhabhi, 0);
+  assert.equal(g.safe[1], true);
+});
+
+// Puts a game straight into Sarrein with A holding `aHand` (B empty).
+function inSarrein(aHand) {
+  const g = duel([...aHand, '2C'], ['TC'], { turn: 0 });
+  playCard(g, 0, '2C');
+  playCard(g, 1, 'TC');
+  assert.ok(g.sarrein, 'Sarrein should be running');
+  return g;
+}
+
+test('E7 sarrein: A must answer with a higher card (even his last) → B wins', () => {
+  const g = inSarrein(['KS', '2S']);
+  pickCard(g, '2S');
+  assert.deepEqual(legalMoves(g, 0), ['KS']);
+  const events = playCard(g, 0, 'KS');
+  assert.ok(events.some(e => e.type === 'sarrein_result' && e.winner === 1 && e.reason === 'higher'));
+  assert.equal(g.bhabhi, 0);
+  assert.equal(g.safe[1], true);
+});
+
+test('E8 sarrein: A answers lower with his last card → A wins', () => {
+  const g = inSarrein(['3S', '2S']);
+  pickCard(g, '3S');
+  const events = playCard(g, 0, '2S');
+  assert.ok(events.some(e => e.type === 'sarrein_result' && e.winner === 0 && e.reason === 'last_card'));
+  assert.equal(g.bhabhi, 1);
+});
+
+test('E9 sarrein: A has none of the suit → his thulla makes B pick up, A wins', () => {
+  const g = inSarrein(['3D', '7C', '9H']);
+  pickCard(g, '3D');
+  assert.deepEqual(legalMoves(g, 0).sort(), ['7C', '9H']);
+  const events = playCard(g, 0, '7C');
+  assert.ok(events.some(e => e.type === 'thulla' && e.seat === 0 && e.winner === 1));
+  assert.ok(events.some(e => e.type === 'sarrein_result' && e.winner === 0 && e.reason === 'thulla'));
+  assert.equal(g.bhabhi, 1);
+});
+
+test('E10 sarrein: clean lower answer → next round; then A on 1 card loses', () => {
+  const g = inSarrein(['9D', '4D', 'KS']);
+  pickCard(g, '9D');
+  let events = playCard(g, 0, '4D');
+  assert.ok(events.some(e => e.type === 'sarrein_result' && e.loser === 0 && e.reason === 'one_card'));
+  assert.equal(g.bhabhi, 0);
+});
+
+test('E10b sarrein: clean lower answer with cards to spare → B picks again from a reshuffle', () => {
+  const g = inSarrein(['9D', '4D', 'KS', '5H']);
+  pickCard(g, '9D');
+  const events = playCard(g, 0, '4D');
+  assert.ok(events.some(e => e.type === 'trick_won' && e.seat === 1));
+  assert.equal(g.phase, 'playing');
+  assert.equal(g.turn, 1);
+  assert.deepEqual([...g.sarrein.order].sort(), ['5H', 'KS']);
+  assert.deepEqual(g.trick, []);
+});
+
+test('E11 sarrein: A chooses freely among the led suit — a higher pick loses for him', () => {
+  const g = inSarrein(['QD', '4D', '2D', '7C']);
+  pickCard(g, '4D');
+  assert.deepEqual(legalMoves(g, 0).sort(), ['2D', 'QD']);
+  const events = playCard(g, 0, 'QD');
+  assert.ok(events.some(e => e.type === 'sarrein_result' && e.winner === 1 && e.reason === 'higher'));
+});
+
+test('E12 sarrein: nobody can concede while it runs', () => {
+  const g = inSarrein(['9D', '4D', 'KS']);
+  assert.equal(canConcede(g, 0), null);
+  assert.equal(canConcede(g, 1), null);
+  assert.throws(() => concede(g, 0));
+});
+
+test('sarrein: picks are final, validated, and only for the picker', () => {
+  const g = inSarrein(['9D', '4D', 'KS']);
+  assert.throws(() => sarreinPick(g, 0, 0), /Not your pick/); // holder can't pick
+  assert.throws(() => sarreinPick(g, 1, 3), /face-down/);
+  assert.throws(() => sarreinPick(g, 1, -1), /face-down/);
+  assert.throws(() => sarreinPick(g, 1, '0'), /face-down/);
+  assert.deepEqual(legalMoves(g, 1), []); // B has no hand to play from
+  const card = g.sarrein.order[0];
+  const events = pickCard(g, card);
+  assert.ok(events.some(e => e.type === 'played' && e.blind && e.card === card));
+  assert.ok(!g.hands[0].includes(card), 'picked card left A\'s hand');
+  assert.equal(g.lastPlay, null);
+  assert.throws(() => undoPlay(g, 1), /Nothing to take back/);
+  assert.throws(() => sarreinPick(g, 1, 0), /Not your pick/); // one pick per round
+});
+
+test('sarrein: needs exactly 2 players — with 3 left, a last card winning is just safe', () => {
+  const g = state([['5C', '9H'], ['TC'], ['3C', '4H']], { turn: 0, sarrein: true });
+  playCard(g, 0, '5C');
+  playCard(g, 1, 'TC');
+  const events = playCard(g, 2, '3C');
+  assert.ok(!events.some(e => e.type === 'sarrein_started'));
+  assert.equal(g.safe[1], true);
+});
+
+test('sarrein: both emptying on the same clean sarr stays a draw', () => {
+  const g = duel(['5C'], ['TC'], { turn: 0 });
+  playCard(g, 0, '5C');
+  const events = playCard(g, 1, 'TC');
+  assert.ok(!events.some(e => e.type === 'sarrein_started'));
+  assert.equal(g.phase, 'over');
+  assert.equal(g.bhabhi, null);
+});
+
+test('sarrein: adapter view shows only the face-down count, never the cards', () => {
+  const g = inSarrein(['9D', '4D', 'KS']);
+  const forB = thullaAdapter.gameView(g, 1);
+  const forA = thullaAdapter.gameView(g, 0);
+  const forSpectator = thullaAdapter.gameView(g, -1);
+  assert.deepEqual(forB.sarrein, { picker: 1, holder: 0, slots: 3 });
+  assert.equal(forB.youPick, true);
+  assert.equal(forA.youPick, false);
+  assert.equal(forA.youCanConcede, false);
+  for (const v of [forB, forSpectator]) {
+    const json = JSON.stringify(v);
+    for (const c of ['9D', '4D', 'KS']) assert.ok(!json.includes(c), `${c} leaked`);
+  }
+  assert.equal(forB.sarreinRule, true);
+});
+
+test('sarrein: rule is off by default and threads from room rules into new games', () => {
+  assert.equal(createGame(4).rules.sarrein, false);
+  assert.deepEqual(thullaAdapter.settings, { sarrein: { default: false } });
+  const room = { players: [{}, {}, {}], rules: { thulla: { sarrein: true } } };
+  thullaAdapter.start(room);
+  assert.equal(room.game.rules.sarrein, true);
+});
+
+test('sarrein: full random games with the rule ON always terminate with a verdict', () => {
+  let sarreins = 0;
+  for (let n = 3; n <= 7; n++) {
+    for (let round = 0; round < 200; round++) {
+      const g = createGame(n, Math.random, { sarrein: true });
+      let moves = 0;
+      while (g.phase === 'playing') {
+        assert.ok(moves++ < 5000, `game wedged with ${n} players`);
+        if (g.sarrein && g.turn === g.sarrein.picker) {
+          sarreinPick(g, g.turn, Math.floor(Math.random() * g.sarrein.order.length));
+          continue;
+        }
+        const legal = legalMoves(g, g.turn);
+        assert.ok(legal.length > 0, 'active player has no legal move');
+        playCard(g, g.turn, legal[Math.floor(Math.random() * legal.length)]);
+      }
+      if (g.sarreinResult) {
+        sarreins++;
+        assert.equal(g.bhabhi, g.sarreinResult.loser);
+        assert.notEqual(g.sarreinResult.winner, g.sarreinResult.loser);
+      } else if (g.bhabhi !== null) {
+        assert.ok(g.hands[g.bhabhi].length > 0);
+      } else {
+        assert.ok(g.hands.every(h => h.length === 0));
+      }
+    }
+  }
+  assert.ok(sarreins > 0, 'random play never reached Sarrein — test is not exercising it');
 });

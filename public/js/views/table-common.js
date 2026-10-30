@@ -30,8 +30,27 @@ export function renderTrickCards(state, trick) {
     wrap.appendChild(el('div', 'trick-label', playerName(state, play.seat).replace(' (you)', '')));
     // Rung's double-Ace rule: this Ace fights as a 2 — say so on the table.
     if (play.demoted) wrap.appendChild(el('div', 'demote-tag', 'counts as 2'));
+    // Thulla's Sarrein: this card was blind-picked from the opponent's hand.
+    if (play.blind) wrap.appendChild(el('div', 'demote-tag', 'blind pick'));
     box.appendChild(wrap);
   }
+}
+
+/* ---------- house-rule toggles ---------- */
+
+// A switch shown to everyone between games so guests know what they're
+// playing; only the host can flip it (for the next game). `defaultOn` is
+// the rule's value when the room never touched it.
+export function renderRuleToggle(state, send, id, rule, label, defaultOn) {
+  const isHost = !!state.players.find(p => p.seat === state.youSeat)?.isHost;
+  const on = state.gameRules?.[rule] ?? defaultOn;
+  const toggle = $(id);
+  toggle.hidden = false;
+  toggle.textContent = `${label}: ${on ? 'ON' : 'OFF'}`;
+  toggle.classList.toggle('off', !on);
+  toggle.disabled = !isHost;
+  toggle.title = isHost ? 'Tap to flip for the next game' : 'Only the host can change this';
+  toggle.onclick = () => send({ type: 'set_rule', rule, value: !on });
 }
 
 /* ---------- card-flight helpers ---------- */

@@ -4,6 +4,7 @@
 [hidden] { display: none !important; }
 
 :root {
+  color-scheme: dark; /* already dark: browsers must not force-darken it */
   --felt-1: #14532d;
   --felt-2: #052e16;
   --gold: #eab308;
@@ -309,6 +310,10 @@ input:focus { border-color: var(--gold); }
 /* ---------- cards ---------- */
 
 .card {
+  /* Card faces are real-card white with black/red suits, always: `only`
+     forbids phone browsers' forced dark/light modes from recolouring them
+     (they'd otherwise invert the face or the suit symbols). */
+  color-scheme: only light;
   width: var(--card-w);
   height: var(--card-h);
   border-radius: 7%;
@@ -665,6 +670,7 @@ input:focus { border-color: var(--gold); }
 
 #call-suits { display: flex; gap: 10px; justify-content: center; }
 #call-suits button {
+  color-scheme: only light; /* drawn like little cards: never recoloured */
   font-size: 1.9rem;
   line-height: 1;
   padding: 10px 16px;
@@ -738,6 +744,20 @@ input:focus { border-color: var(--gold); }
 }
 .rule-toggle:disabled { opacity: 0.75; cursor: default; transform: none; }
 #rule-toggles { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+
+/* Thulla's Sarrein: the holder's cards face down, tappable by the picker */
+#sarrein { text-align: center; margin: 6px 0; }
+#sarrein-label { font-size: 0.85rem; font-weight: 700; color: var(--gold); margin-bottom: 6px; }
+#sarrein-slots { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.sarrein-slot { padding: 0; background: none; border-radius: 6px; }
+.sarrein-slot:not(:disabled) { cursor: pointer; animation: sarrein-pulse 1s ease-in-out infinite alternate; }
+.sarrein-slot:not(:disabled):hover { transform: translateY(-6px); }
+.sarrein-slot:disabled { opacity: 0.9; }
+@keyframes sarrein-pulse {
+  from { box-shadow: 0 0 0 rgba(234, 179, 8, 0); }
+  to { box-shadow: 0 0 14px rgba(234, 179, 8, 0.9); }
+}
+.player-chip.sarrein-picker { border-color: var(--gold); }
 
 /* Double-Ace rule: revealed only when the card lands on the table */
 .demote-tag { font-size: 0.65rem; color: #fbbf24; font-weight: 700; margin-top: 1px; }

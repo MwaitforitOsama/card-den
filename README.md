@@ -56,6 +56,19 @@ npm test           # engine unit tests, both games (node --test)
   you safe; the next player with cards leads.
 - Last player holding cards is the **bhabhi**. If the final players all empty
   their hands on the same trick, it's a draw.
+- **Sarrein** (house rule, **off by default**, ⚔️ toggle — host flips it
+  between games, the room remembers): with exactly 2 players left, if B's
+  **last card heads a clean sarr** while A still holds cards, B isn't safe
+  yet — the duel begins. Each round A's cards are shuffled face down for
+  everyone; B taps one blind and it becomes B's lead (final, no undo). A
+  answers with normal follow-suit and chooses which card:
+  - higher card of the suit → **B wins** (even if it was A's last card);
+  - lower card, cards left → clean, B picks again from a fresh shuffle;
+  - lower card with A's **last** card → **A wins**;
+  - no card of the suit → A's thulla would make B pick up → **A wins**.
+  If A holds exactly one card when B is due to pick, **A loses**. Nobody
+  can concede during Sarrein. Unchanged: A heading that sarr instead (A is
+  bhabhi), both emptying together (draw), B's last card being a thulla.
 - **Conceding**: when only 2 players still hold cards and the endgame is a
   foregone conclusion, either of them can press 🏳️ Concede. The opponent
   must accept — then the game ends immediately with the conceder losing
@@ -212,7 +225,8 @@ on hostile networks still can't hear each other, that's the known ceiling
 - `test/integration/` — end-to-end tests against a running dev server:
   `node test/integration/smoke.mjs` (full Thulla games, reconnect, rematch),
   `rung-test.mjs` (game switching, seat swaps, a full Rung deal, stats),
-  `chat-test.mjs`, `grace-test.mjs` (~35s, real 15s timers).
+  `chat-test.mjs`, `grace-test.mjs` (~35s, real 15s timers),
+  `sarrein-test.mjs` (Sarrein switch + a live duel over the sockets).
   Set `PORT=…` if the server isn't on 8787.
 
 ## Deploy
